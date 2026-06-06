@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +17,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!decoded || decoded.role !== 'manager') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { status } = await request.json();
-    const { id } = params;
+    const { id } = await params;
 
     // Update status
     const { error: updateErr } = await supabase
