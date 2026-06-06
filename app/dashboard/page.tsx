@@ -11,7 +11,8 @@ import {
 import { 
   Users, CheckCircle, Clock, Search, Filter, AlertTriangle, FileText, 
   Sparkles, ShieldCheck, Activity, Plus, Check, X, Download, Loader2,
-  ChevronLeft, ChevronRight, FileDown, Calendar, TrendingUp, Award, Bell
+  ChevronLeft, ChevronRight, FileDown, Calendar, TrendingUp, Award, Bell,
+  Edit2, Trash2, Save
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import jsPDF from 'jspdf';
@@ -52,6 +53,12 @@ export default function DashboardPage() {
   // Admin New Inputs
   const [newDept, setNewDept] = useState('');
   const [newKra, setNewKra] = useState('');
+
+  // Admin Edit States
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [editDeptName, setEditDeptName] = useState('');
+  const [editingKraId, setEditingKraId] = useState<string | null>(null);
+  const [editKraName, setEditKraName] = useState('');
 
   useEffect(() => {
     if (!state.isLoading && (!state.user || state.user.role !== 'manager')) {
@@ -266,9 +273,9 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto mt-8 px-4 md:px-6">
         
         {/* HR Dashboard Banner */}
-        <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-3 shadow-sm">
-          <Bell className="text-blue-500 flex-shrink-0" size={20} />
-          <p className="text-blue-800 dark:text-blue-200 text-sm font-medium">
+        <div className="mb-6 bg-blue-600 rounded-lg p-4 flex items-center gap-3 shadow-md">
+          <Bell className="text-white flex-shrink-0" size={20} />
+          <p className="text-white text-sm font-medium">
             <strong>Today's Submission Rate: {completionRate}%</strong> | {Math.max(0, employees.length - todaysEntries.length)} Employees Pending
           </p>
         </div>
@@ -687,7 +694,34 @@ export default function DashboardPage() {
                   <AnimatePresence>
                     {departments.map(d => (
                       <motion.li key={d.id} initial={{opacity:0, y:-10}} animate={{opacity:1, y:0}} className="flex justify-between items-center bg-secondary/50 px-4 py-3 rounded-lg border border-border/50">
-                        <span className="text-sm font-medium text-foreground">{d.name}</span>
+                        {editingDeptId === d.id ? (
+                          <div className="flex gap-2 w-full">
+                            <input 
+                              type="text" 
+                              value={editDeptName}
+                              onChange={e => setEditDeptName(e.target.value)}
+                              className="flex-1 bg-background border border-border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none"
+                            />
+                            <button onClick={async () => {
+                              await fetch('/api/departments', { method: 'PUT', body: JSON.stringify({id: d.id, name: editDeptName})});
+                              setEditingDeptId(null); fetchData();
+                            }} className="text-green-500 hover:text-green-600 p-1"><Save size={16}/></button>
+                            <button onClick={() => setEditingDeptId(null)} className="text-muted-foreground hover:text-foreground p-1"><X size={16}/></button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-sm font-medium text-foreground">{d.name}</span>
+                            <div className="flex gap-2">
+                              <button onClick={() => { setEditingDeptId(d.id); setEditDeptName(d.name); }} className="text-blue-500 hover:text-blue-600 p-1"><Edit2 size={14}/></button>
+                              <button onClick={async () => {
+                                if(confirm('Delete this department?')) {
+                                  await fetch('/api/departments', { method: 'DELETE', body: JSON.stringify({id: d.id})});
+                                  fetchData();
+                                }
+                              }} className="text-red-500 hover:text-red-600 p-1"><Trash2 size={14}/></button>
+                            </div>
+                          </>
+                        )}
                       </motion.li>
                     ))}
                   </AnimatePresence>
@@ -719,7 +753,34 @@ export default function DashboardPage() {
                   <AnimatePresence>
                     {kras.map(k => (
                       <motion.li key={k.id} initial={{opacity:0, y:-10}} animate={{opacity:1, y:0}} className="flex justify-between items-center bg-secondary/50 px-4 py-3 rounded-lg border border-border/50">
-                        <span className="text-sm font-medium text-foreground">{k.name}</span>
+                        {editingKraId === k.id ? (
+                          <div className="flex gap-2 w-full">
+                            <input 
+                              type="text" 
+                              value={editKraName}
+                              onChange={e => setEditKraName(e.target.value)}
+                              className="flex-1 bg-background border border-border rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none"
+                            />
+                            <button onClick={async () => {
+                              await fetch('/api/kras', { method: 'PUT', body: JSON.stringify({id: k.id, name: editKraName})});
+                              setEditingKraId(null); fetchData();
+                            }} className="text-green-500 hover:text-green-600 p-1"><Save size={16}/></button>
+                            <button onClick={() => setEditingKraId(null)} className="text-muted-foreground hover:text-foreground p-1"><X size={16}/></button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-sm font-medium text-foreground">{k.name}</span>
+                            <div className="flex gap-2">
+                              <button onClick={() => { setEditingKraId(k.id); setEditKraName(k.name); }} className="text-blue-500 hover:text-blue-600 p-1"><Edit2 size={14}/></button>
+                              <button onClick={async () => {
+                                if(confirm('Delete this KRA?')) {
+                                  await fetch('/api/kras', { method: 'DELETE', body: JSON.stringify({id: k.id})});
+                                  fetchData();
+                                }
+                              }} className="text-red-500 hover:text-red-600 p-1"><Trash2 size={14}/></button>
+                            </div>
+                          </>
+                        )}
                       </motion.li>
                     ))}
                   </AnimatePresence>

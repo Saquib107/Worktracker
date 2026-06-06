@@ -26,3 +26,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const { id, name } = await request.json();
+    const { data, error } = await supabase.from('pgepl_departments').update({ name }).eq('id', id).select().single();
+    if (error) throw error;
+    return NextResponse.json({ department: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { id } = await request.json();
+    const { error } = await supabase.from('pgepl_departments').delete().eq('id', id);
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
