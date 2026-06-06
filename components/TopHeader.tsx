@@ -59,8 +59,8 @@ export default function TopHeader({ title }: { title: string }) {
   return (
     <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors">
       <div className="flex items-center gap-4">
-        <div className="w-10 h-10 bg-primary rounded-md flex items-center justify-center shadow-md hidden md:flex">
-          <span className="text-primary-foreground text-sm font-black tracking-tighter">PG</span>
+        <div className="hidden md:flex items-center justify-center">
+          <img src="/pgepl-logo.png" alt="PGEPL Logo" className="h-10 w-auto object-contain" />
         </div>
         <div className="flex flex-col">
           <div className="flex items-center gap-2">

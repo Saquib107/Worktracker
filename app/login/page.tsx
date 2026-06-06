@@ -91,8 +91,8 @@ export default function LoginPage() {
         className="w-full max-w-md bg-white border border-[#e2e8f0] rounded-xl p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] relative z-10"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-[#1a2e4a] rounded-lg flex items-center justify-center mb-4 shadow-lg">
-            <span className="text-white text-2xl font-black tracking-tighter">PG</span>
+          <div className="mb-4 flex items-center justify-center">
+            <img src="/pgepl-logo.png" alt="PGEPL Logo" className="h-20 w-auto object-contain drop-shadow-md" />
           </div>
           <div className="flex flex-col items-center gap-1 mb-2">
             <h1 className="text-3xl font-black tracking-tight text-[#1a2e4a] font-display uppercase">PGEPL</h1>
