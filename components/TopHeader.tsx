@@ -58,10 +58,18 @@ export default function TopHeader({ title }: { title: string }) {
 
   return (
     <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors">
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold tracking-wider text-primary font-display hidden md:block">PGEPL</h1>
-        <span className="text-muted-foreground hidden md:block">|</span>
-        <span className="text-foreground font-medium text-lg">{title}</span>
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 bg-primary rounded-md flex items-center justify-center shadow-md hidden md:flex">
+          <span className="text-primary-foreground text-sm font-black tracking-tighter">PG</span>
+        </div>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black tracking-tight text-primary font-display uppercase hidden md:block">PGEPL</h1>
+            <span className="text-muted-foreground hidden md:block">|</span>
+            <span className="text-foreground font-semibold text-md">{title === 'Enterprise Terminal' ? 'Work Tracker' : title}</span>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest hidden md:block">Version 1.0</span>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">

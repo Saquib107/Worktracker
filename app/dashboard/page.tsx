@@ -11,11 +11,12 @@ import {
 import { 
   Users, CheckCircle, Clock, Search, Filter, AlertTriangle, FileText, 
   Sparkles, ShieldCheck, Activity, Plus, Check, X, Download, Loader2,
-  ChevronLeft, ChevronRight, FileDown, Calendar, TrendingUp, Award
+  ChevronLeft, ChevronRight, FileDown, Calendar, TrendingUp, Award, Bell
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { format, subDays, isAfter, startOfDay } from 'date-fns';
 
 export default function DashboardPage() {
@@ -131,8 +132,9 @@ export default function DashboardPage() {
     // Range Filter
     const entryDate = new Date(e.work_date);
     if (reportRangeFilter === "Today's Reports" && e.work_date !== todayDateStr) return false;
+    if (reportRangeFilter === "Today's Reports" && e.work_date !== todayDateStr) return false;
     if (reportRangeFilter === "Weekly Reports" && !isAfter(entryDate, subDays(new Date(), 7))) return false;
-    if (reportRangeFilter === "Monthly Reports" && !isAfter(entryDate, subDays(new Date(), 30))) return false;
+    if (reportRangeFilter === "This Month" && !isAfter(entryDate, subDays(new Date(), 30))) return false;
 
     // Dept Filter
     if (reportDeptFilter !== 'All' && e.department !== reportDeptFilter) return false;
@@ -180,6 +182,20 @@ export default function DashboardPage() {
   }
 
   // --- Exports ---
+  const handleExportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(filteredReports.map(e => ({
+      Date: e.work_date,
+      Employee: e.pgepl_users?.name || 'N/A',
+      Department: e.department,
+      KRA: e.kra_category.replace(/_/g, ' '),
+      Hours: e.hours_spent,
+      Status: e.approval_status
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reports");
+    XLSX.writeFile(wb, `PGEPL_Export_${reportRangeFilter.replace(' ', '_')}.xlsx`);
+  };
+
   const handleExportCSV = () => {
     const headers = ['Date', 'Employee', 'Department', 'KRA', 'Hours', 'Status', 'Approval'];
     const csvContent = [
@@ -248,6 +264,15 @@ export default function DashboardPage() {
       </div>
 
       <main className="max-w-7xl mx-auto mt-8 px-4 md:px-6">
+        
+        {/* HR Dashboard Banner */}
+        <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-3 shadow-sm">
+          <Bell className="text-blue-500 flex-shrink-0" size={20} />
+          <p className="text-blue-800 dark:text-blue-200 text-sm font-medium">
+            <strong>Today's Submission Rate: {completionRate}%</strong> | {Math.max(0, employees.length - todaysEntries.length)} Employees Pending
+          </p>
+        </div>
+
         <AnimatePresence mode="wait">
           
           {/* OVERVIEW TAB */}
@@ -255,32 +280,43 @@ export default function DashboardPage() {
             <motion.div key="overview" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
               
               {/* Top Widgets */}
-              <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <motion.div variants={itemVariants} className="bg-card border border-border p-5 rounded-xl shadow-sm">
                   <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Completion Rate</p>
-                    <Activity size={18} className="text-blue-500" />
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total Employees</p>
+                    <Users size={18} className="text-blue-500" />
                   </div>
-                  <h3 className="text-3xl font-display font-bold text-foreground">{completionRate}%</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{todaysEntries.length}/{employees.length} employees submitted today</p>
+                  <h3 className="text-3xl font-display font-bold text-foreground">{employees.length}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Active headcount</p>
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="bg-card border border-border p-5 rounded-xl shadow-sm">
                   <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Pending Approvals</p>
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Today's Reports</p>
+                    <CheckCircle size={18} className="text-emerald-500" />
+                  </div>
+                  <h3 className="text-3xl font-display font-bold text-foreground">{todaysEntries.length}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Submitted today</p>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="bg-card border border-border p-5 rounded-xl shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Pending Reports</p>
                     <Clock size={18} className="text-yellow-500" />
                   </div>
-                  <h3 className="text-3xl font-display font-bold text-foreground">{pendingApprovals.length}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Require manager review</p>
+                  <h3 className="text-3xl font-display font-bold text-foreground">{Math.max(0, employees.length - todaysEntries.length)}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Require submission</p>
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="bg-card border border-border p-5 rounded-xl shadow-sm">
                   <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Issues Flagged</p>
-                    <AlertTriangle size={18} className="text-red-500" />
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Average Hours</p>
+                    <Activity size={18} className="text-purple-500" />
                   </div>
-                  <h3 className="text-3xl font-display font-bold text-foreground">{issuesToday.length}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Blockers reported today</p>
+                  <h3 className="text-3xl font-display font-bold text-foreground">
+                    {todaysEntries.length > 0 ? (todaysEntries.reduce((a,b)=>a+Number(b.hours_spent),0) / todaysEntries.length).toFixed(1) : 0}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">Hours per employee today</p>
                 </motion.div>
               </motion.div>
 
@@ -347,24 +383,24 @@ export default function DashboardPage() {
               
               {/* Range Filters & Exports */}
               <div className="p-4 md:px-6 md:py-5 border-b border-border flex flex-col md:flex-row justify-between items-center gap-4 bg-card">
-                <div className="flex bg-secondary rounded-lg p-1 w-full md:w-auto">
-                  {['All Reports', 'Today\'s Reports', 'Weekly Reports', 'Monthly Reports'].map(r => (
+                <div className="flex bg-secondary rounded-lg p-1 w-full md:w-auto overflow-x-auto custom-scrollbar">
+                  {['All Reports', 'Today\'s Reports', 'Weekly Reports', 'This Month'].map(r => (
                     <button 
                       key={r}
                       onClick={() => { setReportRangeFilter(r); setCurrentPage(1); }}
-                      className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${reportRangeFilter === r ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                      className={`whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${reportRangeFilter === r ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     >
-                      {r.split(' ')[0]}
+                      {r}
                     </button>
                   ))}
                 </div>
                 
                 <div className="flex gap-2 w-full md:w-auto">
-                  <button onClick={handleExportCSV} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-secondary text-foreground px-4 py-2 rounded-lg font-medium text-xs hover:bg-border transition-colors">
-                    <Download size={14} /> CSV
+                  <button onClick={handleExportExcel} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#107c41] text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-[#0c5e31] transition-colors shadow-sm">
+                    <FileDown size={14} /> Excel
                   </button>
-                  <button onClick={handleExportPDF} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium text-xs hover:bg-primary/90 transition-colors">
-                    <FileDown size={14} /> PDF
+                  <button onClick={handleExportPDF} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-secondary text-foreground px-4 py-2 rounded-lg font-bold text-xs hover:bg-border transition-colors">
+                    <Download size={14} /> PDF
                   </button>
                 </div>
               </div>

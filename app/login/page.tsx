@@ -91,12 +91,16 @@ export default function LoginPage() {
         className="w-full max-w-md bg-white border border-[#e2e8f0] rounded-xl p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] relative z-10"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-bold tracking-wider text-[#1a2e4a] font-display">PGEPL</h1>
+          <div className="w-16 h-16 bg-[#1a2e4a] rounded-lg flex items-center justify-center mb-4 shadow-lg">
+            <span className="text-white text-2xl font-black tracking-tighter">PG</span>
           </div>
-          <p className="text-slate-500 uppercase tracking-widest text-xs text-center font-bold">
-            Daily Work Tracker
-          </p>
+          <div className="flex flex-col items-center gap-1 mb-2">
+            <h1 className="text-3xl font-black tracking-tight text-[#1a2e4a] font-display uppercase">PGEPL</h1>
+            <h2 className="text-lg font-semibold tracking-wide text-slate-700">Work Tracker</h2>
+          </div>
+          <div className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-widest border border-slate-200 mt-2">
+            Version 1.0
+          </div>
           <div className="w-12 h-1 bg-[#1a2e4a] mt-6 rounded-full"></div>
         </div>
 
