@@ -13,7 +13,7 @@ import {
   Sparkles, ShieldCheck, Activity, Plus, Check, X, Download, Loader2,
   ChevronLeft, ChevronRight, FileDown, Calendar, TrendingUp, Award
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, subDays, isAfter, startOfDay } from 'date-fns';
@@ -214,15 +214,15 @@ export default function DashboardPage() {
   if (loading || !state.user) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8" /></div>;
 
   // --- Animation Variants ---
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
     show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } }
   };
-  const pageVariants = {
+  const pageVariants: Variants = {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
     exit: { opacity: 0, y: -10, transition: { duration: 0.2 } }
