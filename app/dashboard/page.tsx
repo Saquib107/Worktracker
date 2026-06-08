@@ -134,6 +134,39 @@ export default function DashboardPage() {
   const issuesToday = todaysEntries.filter(e => e.has_issue);
   const completionRate = Math.round((todaysEntries.length / (employees.length || 1)) * 100);
 
+  // --- Highlights Calculations ---
+  let topDeptRate = { name: 'None', rate: 0 };
+  let topDeptHours = { name: 'None', avg: 0 };
+  const pendingCountHighlights = Math.max(0, employees.length - todaysEntries.length);
+  
+  const deptEmps: Record<string, number> = {};
+  employees.forEach(e => {
+    deptEmps[e.department] = (deptEmps[e.department] || 0) + 1;
+  });
+  
+  const deptTodaysEntries: Record<string, any[]> = {};
+  todaysEntries.forEach(e => {
+    if (!deptTodaysEntries[e.department]) deptTodaysEntries[e.department] = [];
+    deptTodaysEntries[e.department].push(e);
+  });
+  
+  Object.keys(deptEmps).forEach(dept => {
+    const total = deptEmps[dept];
+    const submitted = deptTodaysEntries[dept]?.length || 0;
+    const rate = Math.round((submitted / total) * 100);
+    if (rate > topDeptRate.rate) {
+      topDeptRate = { name: dept, rate };
+    }
+    
+    if (submitted > 0) {
+      const hours = deptTodaysEntries[dept].reduce((sum, e) => sum + Number(e.hours_spent), 0);
+      const avg = hours / submitted;
+      if (avg > topDeptHours.avg) {
+        topDeptHours = { name: dept, avg };
+      }
+    }
+  });
+
   // --- Reports Data Prep ---
   let filteredReports = entries.filter(e => {
     // Range Filter
@@ -357,15 +390,42 @@ export default function DashboardPage() {
                       {isGeneratingAi ? <Loader2 size={16} className="animate-spin" /> : 'Generate'}
                     </button>
                   </div>
-                  <div className="p-6 flex-1 bg-card">
+                  <div className="p-6 flex-1 bg-card flex flex-col">
+                    <div className="mb-6 bg-secondary/30 p-4 rounded-lg border border-border/50">
+                      <h4 className="font-bold text-sm text-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
+                        <Activity size={16} className="text-primary" /> Today's Highlights
+                      </h4>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                          <span className="font-medium text-foreground">{completionRate}%</span> overall submission rate
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                          <span className="font-medium text-foreground">{pendingCountHighlights}</span> {pendingCountHighlights === 1 ? 'employee' : 'employees'} pending
+                        </li>
+                        {topDeptRate.rate > 0 && (
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                            <span className="font-medium text-foreground">{topDeptRate.name}</span> team reached {topDeptRate.rate}% completion
+                          </li>
+                        )}
+                        {topDeptHours.avg > 0 && (
+                          <li className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                            <span className="font-medium text-foreground">{topDeptHours.name}</span> team averaged {topDeptHours.avg.toFixed(1)} hours
+                          </li>
+                        )}
+                      </ul>
+                    </div>
                     {aiSummary ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none text-foreground whitespace-pre-wrap leading-relaxed">
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-foreground whitespace-pre-wrap leading-relaxed border-t border-border/50 pt-4 mt-auto">
                         {aiSummary}
                       </div>
                     ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-center space-y-3 py-12">
-                        <Sparkles size={32} className="text-muted-foreground/30" />
-                        <p className="text-muted-foreground text-sm max-w-xs">Generate an AI executive summary of your team's performance today.</p>
+                      <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-6 border-t border-border/50 mt-auto">
+                        <Sparkles size={24} className="text-muted-foreground/30" />
+                        <p className="text-muted-foreground text-xs max-w-xs">Generate an AI executive summary of your team's performance today.</p>
                       </div>
                     )}
                   </div>
