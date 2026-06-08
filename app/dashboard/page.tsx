@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import TopHeader from '@/components/TopHeader';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  LineChart, Line, AreaChart, Area
+  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { 
   Users, CheckCircle, Clock, Search, Filter, AlertTriangle, FileText, 
@@ -187,6 +187,21 @@ export default function DashboardPage() {
     const dayHours = dayEntries.reduce((sum, e) => sum + Number(e.hours_spent), 0);
     trendsData.push({ date: format(d, 'MMM dd'), hours: dayHours });
   }
+
+  // Submission Status Data
+  const totalEmps = employees.length || 1;
+  const completedCount = todaysEntries.length;
+  // Late = submitted after 5PM local time for the work_date
+  const lateCount = todaysEntries.filter(e => new Date(e.submitted_at).getHours() >= 17).length;
+  const onTimeCount = completedCount - lateCount;
+  const pendingCount = Math.max(0, totalEmps - completedCount);
+  
+  const submissionData = [
+    { name: 'Completed', value: onTimeCount, color: '#10b981' }, // green
+    { name: 'Late', value: lateCount, color: '#f59e0b' }, // yellow
+    { name: 'Pending', value: pendingCount, color: '#ef4444' } // red
+  ].filter(d => d.value > 0);
+
 
   // --- Exports ---
   const handleExportExcel = () => {
@@ -524,21 +539,15 @@ export default function DashboardPage() {
 
                     <motion.div variants={itemVariants} className="bg-card border border-border p-6 rounded-xl shadow-sm">
                       <div className="flex justify-between items-start mb-4">
-                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Work Trends (14 Days)</p>
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Hours Worked Trend</p>
                         <TrendingUp size={18} className="text-primary" />
                       </div>
-                      <div className="h-[100px]">
+                      <div className="h-[120px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trendsData}>
-                            <defs>
-                              <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
+                          <LineChart data={trendsData}>
                             <Tooltip cursor={false} contentStyle={{backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)', fontSize: '12px', padding: '4px 8px'}} />
-                            <Area type="monotone" dataKey="hours" stroke="var(--primary)" strokeWidth={2} fillOpacity={1} fill="url(#colorHours)" />
-                          </AreaChart>
+                            <Line type="monotone" dataKey="hours" stroke="var(--primary)" strokeWidth={3} dot={{r: 3, fill: 'var(--primary)'}} activeDot={{r: 5}} />
+                          </LineChart>
                         </ResponsiveContainer>
                       </div>
                     </motion.div>
@@ -561,10 +570,38 @@ export default function DashboardPage() {
                   </motion.div>
                 </div>
 
-                {/* Top Employees Leaderboard */}
-                <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col h-full min-h-[400px]">
-                  <div className="border-b border-border bg-secondary/30 px-6 py-4 flex items-center gap-2">
-                    <Award size={18} className="text-yellow-500" />
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* Submission Status Pie Chart */}
+                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm p-6">
+                    <h3 className="font-bold text-foreground mb-4">Submission Status (Today)</h3>
+                    <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={submissionData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {submissionData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)', borderRadius: '8px'}} />
+                          <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </motion.div>
+
+                  {/* Top Employees Leaderboard */}
+                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[300px]">
+                    <div className="border-b border-border bg-secondary/30 px-6 py-4 flex items-center gap-2">
+                      <Award size={18} className="text-yellow-500" />
                     <h3 className="font-bold text-foreground">Top Performing Employees</h3>
                   </div>
                   <div className="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3">
@@ -584,9 +621,9 @@ export default function DashboardPage() {
                     {topEmployees.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No data available yet.</p>}
                   </div>
                 </motion.div>
-                
               </div>
-            </motion.div>
+            </div>
+          </motion.div>
           )}
 
           {/* EMPLOYEES TAB */}
