@@ -10,6 +10,7 @@ import TopHeader from '@/components/TopHeader';
 import { Check, AlertCircle, Sparkles, Send, Loader2, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { savePendingReport } from '@/lib/db';
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -135,24 +136,35 @@ export default function SubmitPage() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    
+    const payload = {
+      work_date: workDate,
+      department,
+      kra_category: kra,
+      tasks_text: tasksText,
+      hours_spent: hoursSpent,
+      task_status: taskStatus,
+      has_issue: hasIssue,
+      issue_description: hasIssue ? issueDesc : null,
+      plan_for_tomorrow: planTomorrow
+    };
+
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        // Offline Mode
+        await savePendingReport(payload);
+        setSubmittedEntry({ ...payload, isOffline: true });
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await fetch('/api/entries', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${state.token}`
         },
-        body: JSON.stringify({
-          work_date: workDate,
-          department,
-          kra_category: kra,
-          tasks_text: tasksText,
-          hours_spent: hoursSpent,
-          task_status: taskStatus,
-          has_issue: hasIssue,
-          issue_description: hasIssue ? issueDesc : null,
-          plan_for_tomorrow: planTomorrow
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
@@ -162,7 +174,9 @@ export default function SubmitPage() {
       }
     } catch (err) {
       console.error(err);
-      alert('Network error.');
+      // Fallback to offline if network fails during request
+      await savePendingReport(payload);
+      setSubmittedEntry({ ...payload, isOffline: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -199,8 +213,8 @@ export default function SubmitPage() {
           <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 mt-2">
             <Check size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-1">Report Submitted!</h2>
-          <p className="text-muted-foreground mb-6 text-sm">Your daily work entry has been recorded.</p>
+          <h2 className="text-2xl font-bold text-foreground mb-1">{submittedEntry.isOffline ? 'Saved Offline' : 'Report Submitted!'}</h2>
+          <p className="text-muted-foreground mb-6 text-sm">{submittedEntry.isOffline ? 'Your report will automatically sync when you reconnect.' : 'Your daily work entry has been recorded.'}</p>
           
           <div className="bg-secondary/50 border border-border rounded-lg p-5 text-left text-sm text-foreground mb-8 space-y-3">
             <div className="flex justify-between border-b border-border/50 pb-2">
@@ -209,7 +223,7 @@ export default function SubmitPage() {
             </div>
             <div className="flex justify-between border-b border-border/50 pb-2">
               <span className="text-muted-foreground font-semibold uppercase tracking-wider text-xs">Time</span>
-              <span className="font-medium">{new Date(submittedEntry.submitted_at).toLocaleString()}</span>
+              <span className="font-medium">{submittedEntry.isOffline ? 'Pending Sync' : new Date(submittedEntry.submitted_at).toLocaleString()}</span>
             </div>
             <div className="flex justify-between border-b border-border/50 pb-2">
               <span className="text-muted-foreground font-semibold uppercase tracking-wider text-xs">Manager Assigned</span>
@@ -217,7 +231,7 @@ export default function SubmitPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground font-semibold uppercase tracking-wider text-xs">Status</span>
-              <span className="font-medium text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-md text-xs">{submittedEntry.approval_status}</span>
+              <span className="font-medium text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-md text-xs">{submittedEntry.isOffline ? 'OFFLINE' : (submittedEntry.approval_status || 'Submitted')}</span>
             </div>
           </div>
 

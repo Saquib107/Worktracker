@@ -11,31 +11,17 @@ const DEPARTMENTS = [
 ];
 
 export default function LoginPage() {
-  const [isLogin, setIsLogin] = useState(true);
   
   // Common fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  const [dbDepts, setDbDepts] = useState<string[]>([]);
-  // Register fields
-  const [name, setName] = useState('');
-  const [department, setDepartment] = useState('');
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { state, dispatch } = useAuth();
 
-  useEffect(() => {
-    fetch('/api/departments').then(res => res.json()).then(data => {
-      if (data.departments) {
-        const names = data.departments.map((d: any) => d.name);
-        setDbDepts(names);
-        if (names.length > 0) setDepartment(names[0]);
-      }
-    });
-  }, []);
+
 
   useEffect(() => {
     if (!state.isLoading && state.user) {
@@ -49,10 +35,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const body = isLogin 
-        ? { email, password }
-        : { name, email, password, department };
+      const endpoint = '/api/auth/login';
+      const body = { email, password };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -104,24 +88,6 @@ export default function LoginPage() {
           <div className="w-12 h-1 bg-[#1a2e4a] mt-6 rounded-full"></div>
         </div>
 
-        {/* Toggle Login/Register */}
-        <div className="flex p-1 bg-slate-100 rounded-lg mb-6">
-          <button
-            type="button"
-            onClick={() => { setIsLogin(true); setError(''); }}
-            className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${isLogin ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setIsLogin(false); setError(''); }}
-            className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${!isLogin ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Register
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <AnimatePresence mode="popLayout">
             {error && (
@@ -129,38 +95,6 @@ export default function LoginPage() {
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm text-center mb-4">
                   {error}
                 </div>
-              </motion.div>
-            )}
-
-            {!isLogin && (
-              <motion.div key="name-field" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
-                <label className="text-xs uppercase tracking-widest text-slate-500 font-bold ml-1">
-                  Full Name
-                </label>
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 focus:border-[#1a2e4a] focus:outline-none transition-colors focus:ring-1 focus:ring-[#1a2e4a]"
-                  placeholder="e.g. John Doe"
-                  required={!isLogin}
-                />
-              </motion.div>
-            )}
-
-            {!isLogin && (
-              <motion.div key="dept-field" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
-                <label className="text-xs uppercase tracking-widest text-slate-500 font-bold ml-1">
-                  Department
-                </label>
-                <select 
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 focus:border-[#1a2e4a] focus:outline-none transition-colors focus:ring-1 focus:ring-[#1a2e4a]"
-                  required={!isLogin}
-                >
-                  {dbDepts.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
               </motion.div>
             )}
 
@@ -179,9 +113,18 @@ export default function LoginPage() {
             </motion.div>
 
             <motion.div key="password-field" layout className="space-y-2">
-              <label className="text-xs uppercase tracking-widest text-slate-500 font-bold ml-1">
-                Password
-              </label>
+              <div className="flex justify-between items-center ml-1">
+                <label className="text-xs uppercase tracking-widest text-slate-500 font-bold">
+                  Password
+                </label>
+                <button 
+                  type="button" 
+                  onClick={() => alert('For security purposes, password resets must be handled by HR. Please contact your Head HR or system administrator to reset your password.')}
+                  className="text-xs text-[#1a2e4a] font-semibold hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <input 
                 type="password" 
                 value={password}
@@ -193,19 +136,17 @@ export default function LoginPage() {
             </motion.div>
           </AnimatePresence>
 
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#1a2e4a] hover:bg-[#1a2e4a]/90 text-white font-bold py-3.5 rounded-lg transition-colors mt-6 text-sm disabled:opacity-70 flex justify-center items-center"
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : isLogin ? (
-              "Sign In"
-            ) : (
-              "Create Account"
-            )}
-          </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#1a2e4a] hover:bg-[#25426b] text-white rounded-lg px-4 py-3 font-bold transition-colors shadow-lg shadow-[#1a2e4a]/20 flex items-center justify-center gap-2 mt-2 disabled:opacity-70"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                'Sign In'
+              )}
+            </button>
         </form>
       </motion.div>
     </div>

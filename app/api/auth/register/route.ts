@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import { signToken } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -9,7 +9,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password, department } = await request.json();
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.split(' ')[1];
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized: Head HR access required' }, { status: 401 });
+    }
+
+    const decoded = verifyToken(token) as any;
+    if (!decoded || decoded.role !== 'manager') { // 'manager' is the DB role for Head HR
+      return NextResponse.json({ error: 'Forbidden: Only Head HR can create accounts' }, { status: 403 });
+    }
+
+    const { name, email, password, department, role } = await request.json();
 
     if (!name || !email || !password || !department) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
@@ -37,7 +49,7 @@ export async function POST(request: Request) {
         email: email.toLowerCase(),
         password_hash: passwordHash,
         department,
-        role: 'employee'
+        role: role || 'employee'
       })
       .select('*')
       .single();
@@ -47,19 +59,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create account. Check database permissions.' }, { status: 500 });
     }
 
-    // Create JWT payload
-    const payload = {
-      userId: user.id,
-      name: user.name,
-      role: user.role,
-      department: user.department,
-    };
-
-    const token = signToken(payload);
-
     return NextResponse.json({
-      token,
-      user: payload
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department
+      }
     });
 
   } catch (err: any) {

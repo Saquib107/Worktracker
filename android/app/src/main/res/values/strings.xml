@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PGEPL Work Tracker</string>
+    <string name="title_activity_main">PGEPL Work Tracker</string>
+    <string name="package_name">com.pgepl.worktracker</string>
+    <string name="custom_url_scheme">com.pgepl.worktracker</string>
+</resources>

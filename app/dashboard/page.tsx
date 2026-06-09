@@ -5,15 +5,25 @@ import { useAuth } from '@/context/WorkTrackerContext';
 import { useRouter } from 'next/navigation';
 import TopHeader from '@/components/TopHeader';
 import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend
-} from 'recharts';
-import { 
-  Users, CheckCircle, Clock, Search, Filter, AlertTriangle, FileText, 
-  Sparkles, ShieldCheck, Activity, Plus, Check, X, Download, Loader2,
-  ChevronLeft, ChevronRight, FileDown, Calendar, TrendingUp, Award, Bell,
-  Edit2, Trash2, Save
+  RefreshCw, LayoutDashboard, FileText, Settings, LogOut, Check, X, ShieldCheck, Download, Users, Plus, Trash2, Calendar, Clock, MapPin, Search, Filter, FileDown, MoreHorizontal, AlertCircle,
+  Loader2, Bell, CheckCircle, Activity, Sparkles, ChevronLeft, ChevronRight, TrendingUp, Award, Edit2, Save, Send
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { registerPushNotifications } from '@/lib/push';
+
+const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
+const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false });
+const PieChart = dynamic(() => import('recharts').then(mod => mod.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then(mod => mod.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -53,6 +63,14 @@ export default function DashboardPage() {
   // Admin New Inputs
   const [newDept, setNewDept] = useState('');
   const [newKra, setNewKra] = useState('');
+  
+  // New Employee Inputs
+  const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpEmail, setNewEmpEmail] = useState('');
+  const [newEmpPassword, setNewEmpPassword] = useState('');
+  const [newEmpDept, setNewEmpDept] = useState('');
+  const [isCreatingEmp, setIsCreatingEmp] = useState(false);
+  const [empWizardStep, setEmpWizardStep] = useState(0);
 
   // Admin Edit States
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
@@ -61,10 +79,16 @@ export default function DashboardPage() {
   const [editKraName, setEditKraName] = useState('');
 
   useEffect(() => {
-    if (!state.isLoading && (!state.user || state.user.role !== 'manager')) {
+    if (!state.isLoading && !state.user) {
       router.push('/login');
-    } else if (state.user?.role === 'manager') {
-      fetchData();
+    } else if (state.user) {
+      if (state.user.role !== 'manager') {
+        router.push('/submit');
+      } else {
+        fetchData();
+        // Request push notifications permissions for Head HR on login
+        registerPushNotifications();
+      }
     }
   }, [state, router]);
 
@@ -111,26 +135,39 @@ export default function DashboardPage() {
     }
   };
 
-  const handleApproval = async (id: string, status: string) => {
+  const handleCreateEmployee = async () => {
+    if (!newEmpName || !newEmpEmail || !newEmpPassword || !newEmpDept) return alert("All fields are required");
+    setIsCreatingEmp(true);
     try {
-      await fetch(`/api/entries/${id}/approve`, {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${state.token}`
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({
+          name: newEmpName,
+          email: newEmpEmail,
+          password: newEmpPassword,
+          department: newEmpDept
+        })
       });
-      fetchData(); 
-    } catch (e) {
-      console.error(e);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      setEmpWizardStep(3);
+      fetchData();
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setIsCreatingEmp(false);
     }
   };
 
+  // Removed handleApproval function
   // --- Calculations for Widgets ---
   const todayDateStr = format(new Date(), 'yyyy-MM-dd');
   const todaysEntries = entries.filter(e => e.work_date === todayDateStr);
-  const pendingApprovals = entries.filter(e => e.approval_status === 'Submitted' || e.approval_status === 'Under Review');
   const issuesToday = todaysEntries.filter(e => e.has_issue);
   const completionRate = Math.round((todaysEntries.length / (employees.length || 1)) * 100);
 
@@ -138,6 +175,7 @@ export default function DashboardPage() {
   let topDeptRate = { name: 'None', rate: 0 };
   let topDeptHours = { name: 'None', avg: 0 };
   const pendingCountHighlights = Math.max(0, employees.length - todaysEntries.length);
+  const pendingEmployeesList = employees.filter(emp => !todaysEntries.some(entry => entry.user_id === emp.id));
   
   const deptEmps: Record<string, number> = {};
   employees.forEach(e => {
@@ -243,8 +281,7 @@ export default function DashboardPage() {
       Employee: e.pgepl_users?.name || 'N/A',
       Department: e.department,
       KRA: e.kra_category.replace(/_/g, ' '),
-      Hours: e.hours_spent,
-      Status: e.approval_status
+      Hours: e.hours_spent
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reports");
@@ -252,10 +289,10 @@ export default function DashboardPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Date', 'Employee', 'Department', 'KRA', 'Hours', 'Status', 'Approval'];
+    const headers = ['Date', 'Employee', 'Department', 'KRA', 'Hours', 'Status'];
     const csvContent = [
       headers.join(','),
-      ...filteredReports.map(e => `"${e.work_date}","${e.pgepl_users?.name}","${e.department}","${e.kra_category}","${e.hours_spent}","${e.task_status}","${e.approval_status}"`)
+      ...filteredReports.map(e => `"${e.work_date}","${e.pgepl_users?.name}","${e.department}","${e.kra_category}","${e.hours_spent}","${e.task_status}"`)
     ].join('\n');
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
@@ -269,14 +306,13 @@ export default function DashboardPage() {
     autoTable(doc, {
       startY: 20,
       headStyles: { fillColor: [26, 46, 74] }, // Navy blue
-      head: [['Date', 'Employee', 'Dept', 'KRA', 'Hrs', 'Appvl']],
+      head: [['Date', 'Employee', 'Dept', 'KRA', 'Hrs']],
       body: filteredReports.map(e => [
         e.work_date, 
         e.pgepl_users?.name || 'N/A', 
         e.department, 
         e.kra_category.replace(/_/g, ' '), 
-        e.hours_spent, 
-        e.approval_status
+        e.hours_spent
       ]),
     });
     doc.save(`PGEPL_Report_${reportRangeFilter.replace(' ', '_')}.pdf`);
@@ -306,7 +342,7 @@ export default function DashboardPage() {
       {/* TABS */}
       <div className="bg-card border-b border-border sticky top-[73px] z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex overflow-x-auto custom-scrollbar">
-          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs', 'Admin'].map(tab => (
+          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs', 'Head HR'].map(tab => (
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
@@ -431,29 +467,54 @@ export default function DashboardPage() {
                   </div>
                 </motion.div>
 
-                {/* Recent Activity Feed */}
-                <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col h-[500px]">
-                  <div className="border-b border-border bg-secondary/30 px-6 py-4">
-                    <h3 className="font-bold text-foreground">Recent Submissions</h3>
-                  </div>
-                  <div className="p-4 overflow-y-auto custom-scrollbar space-y-4 flex-1">
-                    <AnimatePresence>
-                      {entries.slice(0, 15).map((e, idx) => (
-                        <motion.div key={e.id || idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="flex gap-4 border-b border-border/50 pb-4 last:border-0 last:pb-0">
-                          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary flex-shrink-0">
-                            {e.pgepl_users?.name?.charAt(0) || '?'}
+                {/* Recent & Pending Column */}
+                <div className="flex flex-col gap-6">
+                  {/* Pending Employees */}
+                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col flex-1 max-h-[300px]">
+                    <div className="border-b border-border bg-amber-500/10 px-6 py-4 flex items-center gap-2">
+                      <Clock size={18} className="text-amber-500" />
+                      <h3 className="font-bold text-foreground">Pending Employees ({pendingEmployeesList.length})</h3>
+                    </div>
+                    <div className="p-4 overflow-y-auto custom-scrollbar space-y-3 flex-1">
+                      {pendingEmployeesList.map(emp => (
+                        <div key={emp.id} className="flex gap-4 border-b border-border/50 pb-3 last:border-0 last:pb-0 items-center">
+                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-muted-foreground flex-shrink-0 text-xs">
+                            {emp.name?.charAt(0) || '?'}
                           </div>
                           <div>
-                            <p className="font-bold text-sm text-foreground">{e.pgepl_users?.name}</p>
-                            <p className="text-xs text-muted-foreground">Submitted {e.kra_category.replace(/_/g, ' ')}</p>
-                            <p className="text-xs font-medium text-primary mt-1">{new Date(e.submitted_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                            <p className="font-bold text-sm text-foreground">{emp.name}</p>
+                            <p className="text-xs text-muted-foreground">{emp.department}</p>
                           </div>
-                        </motion.div>
+                        </div>
                       ))}
-                    </AnimatePresence>
-                    {entries.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>}
-                  </div>
-                </motion.div>
+                      {pendingEmployeesList.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Everyone has submitted!</p>}
+                    </div>
+                  </motion.div>
+
+                  {/* Recent Activity Feed */}
+                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col flex-1 max-h-[400px]">
+                    <div className="border-b border-border bg-secondary/30 px-6 py-4">
+                      <h3 className="font-bold text-foreground">Recent Submissions</h3>
+                    </div>
+                    <div className="p-4 overflow-y-auto custom-scrollbar space-y-4 flex-1">
+                      <AnimatePresence>
+                        {entries.slice(0, 15).map((e, idx) => (
+                          <motion.div key={e.id || idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="flex gap-4 border-b border-border/50 pb-4 last:border-0 last:pb-0">
+                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary flex-shrink-0">
+                              {e.pgepl_users?.name?.charAt(0) || '?'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm text-foreground">{e.pgepl_users?.name}</p>
+                              <p className="text-xs text-muted-foreground">Submitted {e.kra_category.replace(/_/g, ' ')}</p>
+                              <p className="text-xs font-medium text-primary mt-1">{new Date(e.submitted_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                      {entries.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>}
+                    </div>
+                  </motion.div>
+                </div>
 
               </div>
             </motion.div>
@@ -513,44 +574,84 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                  <thead>
-                    <tr className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground sticky top-0 z-10 backdrop-blur-sm">
-                      <th className="px-6 py-4 font-bold">Employee</th>
-                      <th className="px-6 py-4 font-bold">Date</th>
-                      <th className="px-6 py-4 font-bold">Department</th>
-                      <th className="px-6 py-4 font-bold">Hours</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50 text-sm">
-                    <AnimatePresence>
-                      {paginatedReports.map((entry, i) => (
-                        <motion.tr 
-                          key={entry.id} 
-                          initial={{ opacity: 0, y: -10 }} 
-                          animate={{ opacity: 1, y: 0 }} 
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ delay: i * 0.03 }}
-                          className="hover:bg-secondary/20 transition-colors"
-                        >
-                          <td className="px-6 py-4 font-bold text-foreground flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-primary text-xs flex-shrink-0">
-                              {entry.pgepl_users?.name?.charAt(0) || '?'}
-                            </div>
-                            {entry.pgepl_users?.name}
-                          </td>
-                          <td className="px-6 py-4 text-muted-foreground">{entry.work_date}</td>
-                          <td className="px-6 py-4 text-muted-foreground">{entry.department}</td>
-                          <td className="px-6 py-4 font-mono">{entry.hours_spent}h</td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                    {paginatedReports.length === 0 && (
-                      <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">No reports found matching filters.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground sticky top-0 z-10 backdrop-blur-sm">
+                        <th className="px-6 py-4 font-bold">Employee</th>
+                        <th className="px-6 py-4 font-bold">Date</th>
+                        <th className="px-6 py-4 font-bold">Department</th>
+                        <th className="px-6 py-4 font-bold">Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50 text-sm">
+                      <AnimatePresence>
+                        {paginatedReports.map((entry, i) => (
+                          <motion.tr 
+                            key={entry.id} 
+                            initial={{ opacity: 0, y: -10 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ delay: i * 0.03 }}
+                            className="hover:bg-secondary/20 transition-colors"
+                          >
+                            <td className="px-6 py-4 font-bold text-foreground flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-primary text-xs flex-shrink-0">
+                                {entry.pgepl_users?.name?.charAt(0) || '?'}
+                              </div>
+                              {entry.pgepl_users?.name}
+                            </td>
+                            <td className="px-6 py-4 text-muted-foreground">{entry.work_date}</td>
+                            <td className="px-6 py-4 text-muted-foreground">{entry.department}</td>
+                            <td className="px-6 py-4 font-mono">{entry.hours_spent}h</td>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                      {paginatedReports.length === 0 && (
+                        <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">No reports found matching filters.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden flex flex-col gap-3 p-4">
+                  <AnimatePresence>
+                    {paginatedReports.map((entry, i) => (
+                      <motion.div 
+                        key={`mob-${entry.id}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-card border border-border p-4 rounded-xl shadow-sm flex flex-col gap-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-primary text-sm flex-shrink-0">
+                            {entry.pgepl_users?.name?.charAt(0) || '?'}
+                          </div>
+                          <div>
+                            <div className="font-bold text-foreground">{entry.pgepl_users?.name}</div>
+                            <div className="text-xs text-muted-foreground">{entry.department}</div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t border-border/50 text-sm">
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground uppercase tracking-wider">Date</span>
+                            <span className="font-medium text-foreground">{entry.work_date}</span>
+                          </div>
+                          <div className="flex flex-col text-right">
+                            <span className="text-xs text-muted-foreground uppercase tracking-wider">Hours</span>
+                            <span className="font-mono font-medium text-foreground">{entry.hours_spent}h</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {paginatedReports.length === 0 && (
+                    <div className="text-center py-10 text-muted-foreground text-sm">No reports found matching filters.</div>
+                  )}
+                </div>
               </div>
               
               {/* Pagination */}
@@ -735,38 +836,246 @@ export default function DashboardPage() {
           {/* AUDIT LOGS TAB */}
           {activeTab === 'Audit Logs' && (
             <motion.div key="audit" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="bg-card border border-border rounded-xl shadow-sm overflow-hidden h-[750px] flex flex-col">
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground sticky top-0 backdrop-blur-sm z-10">
-                      <th className="px-6 py-4 font-bold">Time</th>
-                      <th className="px-6 py-4 font-bold">User</th>
-                      <th className="px-6 py-4 font-bold">Action</th>
-                      <th className="px-6 py-4 font-bold">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50 text-sm">
-                    {auditLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-secondary/20 transition-colors">
-                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
-                        <td className="px-6 py-4 font-bold text-foreground whitespace-nowrap">{log.pgepl_users?.name || 'System'}</td>
-                        <td className="px-6 py-4 text-primary font-medium">{log.action}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{log.details}</td>
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground sticky top-0 backdrop-blur-sm z-10">
+                        <th className="px-6 py-4 font-bold">Time</th>
+                        <th className="px-6 py-4 font-bold">User</th>
+                        <th className="px-6 py-4 font-bold">Action</th>
+                        <th className="px-6 py-4 font-bold">Details</th>
                       </tr>
-                    ))}
-                    {auditLogs.length === 0 && (
-                      <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">No audit logs available.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border/50 text-sm">
+                      {auditLogs.map(log => (
+                        <tr key={log.id} className="hover:bg-secondary/20 transition-colors">
+                          <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
+                          <td className="px-6 py-4 font-bold text-foreground whitespace-nowrap">{log.pgepl_users?.name || 'System'}</td>
+                          <td className="px-6 py-4 text-primary font-medium">{log.action}</td>
+                          <td className="px-6 py-4 text-muted-foreground">{log.details}</td>
+                        </tr>
+                      ))}
+                      {auditLogs.length === 0 && (
+                        <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">No audit logs available.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden flex flex-col gap-3 p-4">
+                  {auditLogs.map(log => (
+                    <div key={`mob-${log.id}`} className="bg-card border border-border p-4 rounded-xl shadow-sm flex flex-col gap-2">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-foreground">{log.pgepl_users?.name || 'System'}</span>
+                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">{new Date(log.timestamp).toLocaleDateString()}</span>
+                      </div>
+                      <div className="text-primary font-medium text-sm">{log.action}</div>
+                      <div className="text-sm text-muted-foreground mt-1">{log.details}</div>
+                    </div>
+                  ))}
+                  {auditLogs.length === 0 && (
+                    <div className="text-center py-10 text-muted-foreground text-sm">No audit logs available.</div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
 
-          {/* ADMIN TAB */}
-          {activeTab === 'Admin' && (
-            <motion.div key="admin" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* HEAD HR TAB */}
+          {activeTab === 'Head HR' && (
+            <motion.div key="admin" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+              
+              {/* Employee Management Full Width */}
               <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm p-6">
+                <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2"><Users size={20} className="text-primary"/> Manage Employees</h2>
+                
+                {empWizardStep === 0 ? (
+                  <button onClick={() => setEmpWizardStep(1)} className="mb-6 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors">
+                    <Plus size={16}/> Add Employee
+                  </button>
+                ) : (
+                  <div className="mb-6 bg-secondary/10 p-6 rounded-xl border border-border/50 flex flex-col gap-4">
+                    <div className="flex justify-between items-center border-b border-border/50 pb-3">
+                      <h3 className="font-bold text-foreground flex items-center gap-2">
+                        {empWizardStep === 1 && "Step 1: Employee Details"}
+                        {empWizardStep === 2 && "Step 2: Generate Credentials"}
+                        {empWizardStep === 3 && "Step 3: Send Login Details"}
+                      </h3>
+                      <button onClick={() => { setEmpWizardStep(0); setNewEmpName(''); setNewEmpEmail(''); setNewEmpPassword(''); setNewEmpDept(''); }} className="text-muted-foreground hover:text-foreground"><X size={16}/></button>
+                    </div>
+
+                    {empWizardStep === 1 && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-muted-foreground uppercase">Full Name</label>
+                          <input type="text" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)} placeholder="e.g. Jane Doe" className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-muted-foreground uppercase">Email Address</label>
+                          <input type="email" value={newEmpEmail} onChange={e=>setNewEmpEmail(e.target.value)} placeholder="e.g. jane@pgepl.com" className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-muted-foreground uppercase">Department</label>
+                          <select value={newEmpDept} onChange={e=>setNewEmpDept(e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none">
+                            <option value="">Select Dept...</option>
+                            {departments.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="md:col-span-3 flex justify-end mt-2">
+                          <button 
+                            disabled={!newEmpName || !newEmpEmail || !newEmpDept}
+                            onClick={() => setEmpWizardStep(2)} 
+                            className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
+                          >
+                            Next: Generate Credentials <ChevronRight size={16}/>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {empWizardStep === 2 && (
+                      <div className="flex flex-col gap-4">
+                        <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3 text-amber-800">
+                          <ShieldCheck size={20} className="mt-0.5 flex-shrink-0" />
+                          <div className="text-sm">
+                            <p className="font-bold mb-1">Secure Password Generation</p>
+                            <p>Generate a secure temporary password for this employee. They will be required to change it upon first login (Not implemented yet).</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-4 items-end">
+                          <div className="flex-1 space-y-1">
+                            <label className="text-xs font-bold text-muted-foreground uppercase">Temporary Password</label>
+                            <div className="flex gap-2">
+                              <input type="text" value={newEmpPassword} onChange={e=>setNewEmpPassword(e.target.value)} placeholder="••••••••" className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none font-mono" />
+                              <button 
+                                onClick={() => {
+                                  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$*';
+                                  let pass = '';
+                                  for (let i = 0; i < 10; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                                  setNewEmpPassword(pass);
+                                }}
+                                className="bg-secondary text-foreground px-4 py-2 rounded-lg text-sm font-bold hover:bg-border transition-colors whitespace-nowrap"
+                              >
+                                Auto-Generate
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between mt-2">
+                          <button onClick={() => setEmpWizardStep(1)} className="text-muted-foreground font-bold text-sm hover:text-foreground px-4 py-2">Back</button>
+                          <button 
+                            disabled={!newEmpPassword || isCreatingEmp}
+                            onClick={handleCreateEmployee} 
+                            className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
+                          >
+                            {isCreatingEmp ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={16}/> Create Account</>}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {empWizardStep === 3 && (
+                      <div className="flex flex-col items-center justify-center py-6 gap-4">
+                        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                          <Check size={32} />
+                        </div>
+                        <div className="text-center">
+                          <h3 className="text-xl font-bold text-foreground">Account Created!</h3>
+                          <p className="text-sm text-muted-foreground mt-1">{newEmpName} ({newEmpEmail}) has been added to {newEmpDept}.</p>
+                        </div>
+                        <div className="bg-background border border-border p-4 rounded-lg w-full max-w-sm mt-2 text-sm space-y-2">
+                          <div className="flex justify-between border-b border-border/50 pb-2">
+                            <span className="text-muted-foreground font-bold uppercase tracking-wider text-xs">Email</span>
+                            <span className="font-medium text-foreground">{newEmpEmail}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground font-bold uppercase tracking-wider text-xs">Password</span>
+                            <span className="font-mono text-foreground">{newEmpPassword}</span>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const details = `Login Details for PGEPL Work Tracker\n\nLogin URL: ${window.location.origin}\nEmail: ${newEmpEmail}\nTemporary Password: ${newEmpPassword}\n\nPlease log in and update your password.`;
+                            navigator.clipboard.writeText(details);
+                            alert("Login details copied to clipboard. You can now securely send them to the employee via email or internal chat.");
+                            setEmpWizardStep(0);
+                            setNewEmpName('');
+                            setNewEmpEmail('');
+                            setNewEmpPassword('');
+                            setNewEmpDept('');
+                          }}
+                          className="bg-primary text-primary-foreground px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors mt-2"
+                        >
+                          Copy & Send Details <Send size={16}/>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="overflow-x-auto">
+                  {/* Desktop Table */}
+                  <div className="hidden md:block">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                          <th className="px-4 py-3 font-bold">Name</th>
+                          <th className="px-4 py-3 font-bold">Email</th>
+                          <th className="px-4 py-3 font-bold">Department</th>
+                          <th className="px-4 py-3 font-bold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {employees.map(emp => (
+                          <tr key={emp.id} className="hover:bg-secondary/10">
+                            <td className="px-4 py-3 font-medium text-foreground">{emp.name} {emp.role === 'manager' && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest">Head HR</span>}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{emp.email}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{emp.department}</td>
+                            <td className="px-4 py-3 text-right">
+                              <button onClick={async () => {
+                                if(confirm('Are you sure you want to completely remove this employee?')) {
+                                  alert("Deletion requires API endpoint (not implemented yet)");
+                                }
+                              }} className="text-red-500 hover:text-red-600 p-1 bg-red-500/10 rounded-md">
+                                <Trash2 size={14}/>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Mobile Cards */}
+                  <div className="md:hidden flex flex-col gap-3">
+                    {employees.map(emp => (
+                      <div key={`mob-${emp.id}`} className="bg-card border border-border p-4 rounded-xl shadow-sm flex flex-col gap-2">
+                        <div className="flex justify-between items-start">
+                          <div className="font-bold text-foreground">
+                            {emp.name} 
+                            {emp.role === 'manager' && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest">Head HR</span>}
+                          </div>
+                          <button onClick={async () => {
+                            if(confirm('Are you sure you want to completely remove this employee?')) {
+                              alert("Deletion requires API endpoint (not implemented yet)");
+                            }
+                          }} className="text-red-500 hover:text-red-600 p-2 bg-red-500/10 rounded-md">
+                            <Trash2 size={16}/>
+                          </button>
+                        </div>
+                        <div className="text-sm text-muted-foreground">{emp.email}</div>
+                        <div className="text-sm bg-secondary px-2 py-1 rounded-md self-start">{emp.department}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm p-6">
                 <h2 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2"><ShieldCheck size={20} className="text-primary"/> Manage Departments</h2>
                 <div className="flex gap-2 mb-6">
                   <input 
@@ -883,6 +1192,7 @@ export default function DashboardPage() {
                   </AnimatePresence>
                 </ul>
               </motion.div>
+              </div>
             </motion.div>
           )}
 
