@@ -326,9 +326,7 @@ export default function SubmitPage() {
                           key={k} 
                           onClick={() => {
                             if (isSelected) {
-                              if (selectedKras.length > 1) {
-                                setSelectedKras(selectedKras.filter(x => x !== k));
-                              }
+                              setSelectedKras(selectedKras.filter(x => x !== k));
                             } else {
                               setSelectedKras([...selectedKras, k]);
                             }
@@ -509,7 +507,7 @@ export default function SubmitPage() {
             {step < 4 ? (
               <button 
                 onClick={handleNext} 
-                disabled={step === 2 && tasksText.length < 10 || step === 3 && hasIssue && issueDesc.length === 0}
+                disabled={(step === 1 && selectedKras.length === 0) || (step === 2 && tasksText.length < 10) || (step === 3 && hasIssue && issueDesc.length === 0)}
                 className="px-6 py-2.5 rounded-lg font-medium bg-[#1a2e4a] text-white hover:bg-[#1a2e4a]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next Step
