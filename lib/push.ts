@@ -29,6 +29,7 @@ export const registerLocalNotifications = async () => {
             hour: 17,
             minute: 0
           },
+          repeats: true,
           allowWhileIdle: true, // Ensures it triggers even in Doze mode
         },
         actionTypeId: "",
