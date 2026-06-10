@@ -52,7 +52,8 @@ export default function TopHeader({ title }: { title: string }) {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadNotifications = notifications.filter(n => !n.is_read);
+  const unreadCount = unreadNotifications.length;
 
   if (!mounted || !state.user) return null;
 
@@ -100,16 +101,16 @@ export default function TopHeader({ title }: { title: string }) {
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">{unreadCount} new</span>
               </div>
               <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                {notifications.length === 0 ? (
-                  <p className="p-4 text-center text-sm text-muted-foreground">No notifications</p>
+                {unreadNotifications.length === 0 ? (
+                  <p className="p-4 text-center text-sm text-muted-foreground">No new notifications</p>
                 ) : (
-                  notifications.map(n => (
+                  unreadNotifications.map(n => (
                     <div 
                       key={n.id} 
-                      onClick={() => !n.is_read && markRead(n.id)}
-                      className={`p-4 border-b border-border/50 text-sm cursor-pointer transition-colors ${!n.is_read ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-secondary/50'}`}
+                      onClick={() => markRead(n.id)}
+                      className="p-4 border-b border-border/50 text-sm cursor-pointer transition-colors bg-primary/5 hover:bg-primary/10"
                     >
-                      <p className={`text-foreground ${!n.is_read ? 'font-medium' : ''}`}>{n.message}</p>
+                      <p className="text-foreground font-medium">{n.message}</p>
                       <p className="text-xs text-muted-foreground mt-1">{new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                     </div>
                   ))
