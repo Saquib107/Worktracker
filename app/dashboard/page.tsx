@@ -938,7 +938,7 @@ export default function DashboardPage() {
 
                     {empWizardStep === 2 && (
                       <div className="flex flex-col gap-4">
-                        <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3 text-amber-800">
+                        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 p-4 rounded-lg flex items-start gap-3 text-amber-800 dark:text-amber-500">
                           <ShieldCheck size={20} className="mt-0.5 flex-shrink-0" />
                           <div className="text-sm">
                             <p className="font-bold mb-1">Secure Password Generation</p>
@@ -979,7 +979,7 @@ export default function DashboardPage() {
 
                     {empWizardStep === 3 && (
                       <div className="flex flex-col items-center justify-center py-6 gap-4">
-                        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center">
                           <Check size={32} />
                         </div>
                         <div className="text-center">
