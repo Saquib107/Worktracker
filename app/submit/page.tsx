@@ -254,18 +254,18 @@ export default function SubmitPage() {
   const renderStepIndicator = () => (
     <div className="mb-8">
       <div className="flex justify-between items-center relative">
-        <div className="absolute top-1/2 left-0 right-0 h-1 bg-slate-100 -z-10 rounded-full transform -translate-y-1/2"></div>
+        <div className="absolute top-1/2 left-0 right-0 h-1 bg-secondary -z-10 rounded-full transform -translate-y-1/2"></div>
         <div 
           className="absolute top-1/2 left-0 h-1 bg-[#1a2e4a] -z-10 rounded-full transform -translate-y-1/2 transition-all duration-300"
           style={{ width: `${((step - 1) / 3) * 100}%` }}
         ></div>
         {[1, 2, 3, 4].map(s => (
-          <div key={s} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 bg-white transition-colors duration-300 ${s <= step ? 'border-[#1a2e4a] text-[#1a2e4a]' : 'border-slate-200 text-slate-400'}`}>
+          <div key={s} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 bg-card transition-colors duration-300 ${s <= step ? 'border-[#1a2e4a] text-[#1a2e4a]' : 'border-border text-muted-foreground/70'}`}>
             {s < step ? <Check size={16} /> : s}
           </div>
         ))}
       </div>
-      <div className="flex justify-between text-xs font-medium text-slate-500 mt-2 px-1">
+      <div className="flex justify-between text-xs font-medium text-muted-foreground mt-2 px-1">
         <span>Details</span>
         <span>Work Done</span>
         <span>Status</span>
@@ -275,11 +275,11 @@ export default function SubmitPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-20">
+    <div className="min-h-screen bg-background pb-20">
       <TopHeader title="Daily Log Submission" />
 
       <main className="max-w-2xl mx-auto mt-8 px-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-6 md:p-8 shadow-sm">
+        <div className="bg-card border border-border rounded-xl p-6 md:p-8 shadow-sm">
           
           {hasSubmitted === false && (
             <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-3">
@@ -296,32 +296,32 @@ export default function SubmitPage() {
           <AnimatePresence mode="wait">
             {step === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                <h2 className="text-xl font-bold text-slate-800">Employee Details</h2>
+                <h2 className="text-xl font-bold text-foreground">Employee Details</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Employee Name</label>
-                    <input type="text" disabled value={state.user.name} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-500" />
+                    <label className="block text-sm font-semibold text-foreground mb-1">Employee Name</label>
+                    <input type="text" disabled value={state.user.name} className="w-full bg-secondary/50 border border-border rounded-lg px-4 py-2.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Work Date</label>
-                    <input type="date" value={workDate} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => setWorkDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:border-[#1a2e4a] focus:ring-1 focus:ring-[#1a2e4a] outline-none" />
+                    <label className="block text-sm font-semibold text-foreground mb-1">Work Date</label>
+                    <input type="date" value={workDate} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => setWorkDate(e.target.value)} className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-foreground focus:border-[#1a2e4a] focus:ring-1 focus:ring-[#1a2e4a] outline-none" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Department</label>
-                  <input type="text" disabled value={department} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-500" />
+                  <label className="block text-sm font-semibold text-foreground mb-1">Department</label>
+                  <input type="text" disabled value={department} className="w-full bg-secondary/50 border border-border rounded-lg px-4 py-2.5 text-muted-foreground" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">KRA Category</label>
+                  <label className="block text-sm font-semibold text-foreground mb-3">KRA Category</label>
                   <div className="flex flex-wrap gap-2">
                     {dbKras.map(k => (
                       <button 
                         key={k} 
                         onClick={() => setKra(k)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${kra === k ? 'bg-[#1a2e4a] border-[#1a2e4a] text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${kra === k ? 'bg-[#1a2e4a] border-[#1a2e4a] text-white' : 'bg-card border-border text-muted-foreground hover:border-primary/50 hover:bg-secondary/50'}`}
                       >
                         {k.replace(/_/g, ' ')}
                       </button>
@@ -334,7 +334,7 @@ export default function SubmitPage() {
             {step === 2 && (
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 <div className="flex justify-between items-end">
-                  <h2 className="text-xl font-bold text-slate-800">Work Done Today</h2>
+                  <h2 className="text-xl font-bold text-foreground">Work Done Today</h2>
                   <button 
                     onClick={handlePolish}
                     disabled={isPolishing || tasksText.length < 10}
@@ -350,7 +350,7 @@ export default function SubmitPage() {
                     value={tasksText}
                     onChange={e => setTasksText(e.target.value)}
                     placeholder="List the tasks you completed today..."
-                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 focus:border-[#1a2e4a] focus:ring-1 focus:ring-[#1a2e4a] outline-none min-h-[150px] resize-y"
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground focus:border-[#1a2e4a] focus:ring-1 focus:ring-[#1a2e4a] outline-none min-h-[150px] resize-y"
                   />
                   {tasksText.length > 0 && tasksText.length < 10 && (
                     <p className="text-xs text-red-500 mt-1">Please enter at least 10 characters.</p>
@@ -371,18 +371,18 @@ export default function SubmitPage() {
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-slate-100">
+                <div className="pt-4 border-t border-border/50">
                   <div className="flex justify-between mb-2">
-                    <label className="text-sm font-semibold text-slate-700">Hours Spent</label>
+                    <label className="text-sm font-semibold text-foreground">Hours Spent</label>
                     <span className="text-lg font-bold text-[#1a2e4a]">{hoursSpent}h</span>
                   </div>
                   <input 
                     type="range" min="0.5" max="12" step="0.5" 
                     value={hoursSpent} 
                     onChange={e => setHoursSpent(parseFloat(e.target.value))}
-                    className="w-full accent-[#1a2e4a] h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" 
+                    className="w-full accent-[#1a2e4a] h-2 bg-secondary rounded-lg appearance-none cursor-pointer" 
                   />
-                  <div className="flex justify-between text-xs text-slate-400 mt-2">
+                  <div className="flex justify-between text-xs text-muted-foreground/70 mt-2">
                     <span>0.5h</span>
                     <span>12h</span>
                   </div>
@@ -392,16 +392,16 @@ export default function SubmitPage() {
 
             {step === 3 && (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <h2 className="text-xl font-bold text-slate-800">Status & Issues</h2>
+                <h2 className="text-xl font-bold text-foreground">Status & Issues</h2>
                 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">Task Status</label>
+                  <label className="block text-sm font-semibold text-foreground mb-3">Task Status</label>
                   <div className="flex flex-wrap gap-3">
                     {['Completed', 'In Progress', 'Pending', 'Blocked'].map(s => (
                       <button 
                         key={s} 
                         onClick={() => setTaskStatus(s as TaskStatus)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${taskStatus === s ? 'bg-[#1a2e4a] border-[#1a2e4a] text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${taskStatus === s ? 'bg-[#1a2e4a] border-[#1a2e4a] text-white shadow-md' : 'bg-card border-border text-muted-foreground hover:border-primary/50 hover:bg-secondary/50'}`}
                       >
                         {s}
                       </button>
@@ -409,18 +409,18 @@ export default function SubmitPage() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">Did you face any issues today?</label>
+                <div className="pt-4 border-t border-border/50">
+                  <label className="block text-sm font-semibold text-foreground mb-3">Did you face any issues today?</label>
                   <div className="flex gap-4 mb-4">
                     <button 
                       onClick={() => setHasIssue(true)}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border ${hasIssue ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border ${hasIssue ? 'bg-red-50 border-red-200 text-red-600' : 'bg-card border-border text-muted-foreground hover:bg-secondary/50'}`}
                     >
                       Yes, I faced issues
                     </button>
                     <button 
                       onClick={() => { setHasIssue(false); setIssueDesc(''); }}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border ${!hasIssue ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border ${!hasIssue ? 'bg-green-50 border-green-200 text-green-700' : 'bg-card border-border text-muted-foreground hover:bg-secondary/50'}`}
                     >
                       No issues
                     </button>
@@ -433,7 +433,7 @@ export default function SubmitPage() {
                           value={issueDesc}
                           onChange={e => setIssueDesc(e.target.value)}
                           placeholder="Please describe the issue(s) faced..."
-                          className="w-full bg-white border border-red-200 rounded-lg px-4 py-3 text-slate-800 focus:border-red-400 focus:ring-1 focus:ring-red-400 outline-none min-h-[100px] resize-y"
+                          className="w-full bg-card border border-red-200 rounded-lg px-4 py-3 text-foreground focus:border-red-400 focus:ring-1 focus:ring-red-400 outline-none min-h-[100px] resize-y"
                         />
                         {hasIssue && issueDesc.length === 0 && (
                           <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Issue description is required.</p>
@@ -448,7 +448,7 @@ export default function SubmitPage() {
             {step === 4 && (
               <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 <div className="flex justify-between items-end">
-                  <h2 className="text-xl font-bold text-slate-800">Plan For Tomorrow</h2>
+                  <h2 className="text-xl font-bold text-foreground">Plan For Tomorrow</h2>
                   <button 
                     onClick={handleSuggest}
                     disabled={isSuggesting}
@@ -464,7 +464,7 @@ export default function SubmitPage() {
                     value={planTomorrow}
                     onChange={e => setPlanTomorrow(e.target.value)}
                     placeholder="Briefly describe your plan for tomorrow..."
-                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-800 focus:border-[#1a2e4a] focus:ring-1 focus:ring-[#1a2e4a] outline-none min-h-[150px] resize-y"
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground focus:border-[#1a2e4a] focus:ring-1 focus:ring-[#1a2e4a] outline-none min-h-[150px] resize-y"
                   />
                   {suggestSuggestions.length > 0 && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 space-y-2">
@@ -486,9 +486,9 @@ export default function SubmitPage() {
           </AnimatePresence>
 
           {/* Navigation */}
-          <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between">
+          <div className="mt-8 pt-6 border-t border-border/50 flex justify-between">
             {step > 1 ? (
-              <button onClick={handlePrev} className="px-5 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+              <button onClick={handlePrev} className="px-5 py-2.5 rounded-lg font-medium text-muted-foreground hover:bg-secondary transition-colors">
                 Back
               </button>
             ) : (<div></div>)}
