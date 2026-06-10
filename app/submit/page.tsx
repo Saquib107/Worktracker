@@ -26,7 +26,7 @@ export default function SubmitPage() {
   // Form State
   const [workDate, setWorkDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [department, setDepartment] = useState<Department>('HR');
-  const [kra, setKra] = useState<KraCategory>('Attendance');
+  const [selectedKras, setSelectedKras] = useState<string[]>([]);
   
   const [tasksText, setTasksText] = useState('');
   const [hoursSpent, setHoursSpent] = useState(8);
@@ -51,7 +51,7 @@ export default function SubmitPage() {
         if (data.kras) {
           const kraNames = data.kras.map((k: any) => k.name);
           setDbKras(kraNames);
-          if (kraNames.length > 0) setKra(kraNames[0]);
+          if (kraNames.length > 0) setSelectedKras([kraNames[0]]);
         }
       });
       // Register local notifications for daily reminder
@@ -121,7 +121,7 @@ export default function SubmitPage() {
         },
         body: JSON.stringify({ 
           tasks: tasksText, 
-          kra, 
+          kra: selectedKras.join(', '), 
           status: taskStatus, 
           issueContext: hasIssue ? issueDesc : null 
         }),
@@ -143,7 +143,7 @@ export default function SubmitPage() {
     const payload = {
       work_date: workDate,
       department,
-      kra_category: kra,
+      kra_category: selectedKras.join(', '),
       tasks_text: tasksText,
       hours_spent: hoursSpent,
       task_status: taskStatus,
@@ -193,6 +193,8 @@ export default function SubmitPage() {
     setTaskStatus('Completed');
     setHasIssue(false);
     setIssueDesc('');
+    if (dbKras.length > 0) setSelectedKras([dbKras[0]]);
+    else setSelectedKras([]);
     setPlanTomorrow('');
   };
 
@@ -317,15 +319,26 @@ export default function SubmitPage() {
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-3">KRA Category</label>
                   <div className="flex flex-wrap gap-2">
-                    {dbKras.map(k => (
-                      <button 
-                        key={k} 
-                        onClick={() => setKra(k)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${kra === k ? 'bg-[#1a2e4a] border-[#1a2e4a] text-white' : 'bg-card border-border text-muted-foreground hover:border-primary/50 hover:bg-secondary/50'}`}
-                      >
-                        {k.replace(/_/g, ' ')}
-                      </button>
-                    ))}
+                    {dbKras.map(k => {
+                      const isSelected = selectedKras.includes(k);
+                      return (
+                        <button 
+                          key={k} 
+                          onClick={() => {
+                            if (isSelected) {
+                              if (selectedKras.length > 1) {
+                                setSelectedKras(selectedKras.filter(x => x !== k));
+                              }
+                            } else {
+                              setSelectedKras([...selectedKras, k]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${isSelected ? 'bg-[#1a2e4a] border-[#1a2e4a] text-white shadow-sm' : 'bg-card border-border text-muted-foreground hover:border-primary/50 hover:bg-secondary/50'}`}
+                        >
+                          {k.replace(/_/g, ' ')}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </motion.div>
