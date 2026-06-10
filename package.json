@@ -25,7 +25,7 @@
     "@anthropic-ai/sdk": "^0.100.1",
     "@capacitor/android": "^8.4.0",
     "@capacitor/core": "^8.4.0",
-    "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/local-notifications": "^8.2.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@gsap/react": "^2.1.2",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -61,6 +61,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.4.0",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",

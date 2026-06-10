@@ -11,6 +11,7 @@ import { Check, AlertCircle, Sparkles, Send, Loader2, Download } from 'lucide-re
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { savePendingReport } from '@/lib/db';
+import { registerLocalNotifications } from '@/lib/push';
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -53,6 +54,8 @@ export default function SubmitPage() {
           if (kraNames.length > 0) setKra(kraNames[0]);
         }
       });
+      // Register local notifications for daily reminder
+      registerLocalNotifications();
     }
   }, [state, router]);
 

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'PGEPL Work Tracker',
   webDir: 'public',
   server: {
-    url: 'https://pgepl-tracker.vercel.app',
+    url: 'https://worktracker-one-amber.vercel.app',
     cleartext: true
   }
 };

@@ -9,7 +9,7 @@ import {
   Loader2, Bell, CheckCircle, Activity, Sparkles, ChevronLeft, ChevronRight, TrendingUp, Award, Edit2, Save, Send
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { registerPushNotifications } from '@/lib/push';
+import { registerLocalNotifications } from '@/lib/push';
 
 const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
 const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
@@ -86,8 +86,8 @@ export default function DashboardPage() {
         router.push('/submit');
       } else {
         fetchData();
-        // Request push notifications permissions for Head HR on login
-        registerPushNotifications();
+        // Request permissions for daily 5:00 PM local notification
+        registerLocalNotifications();
       }
     }
   }, [state, router]);

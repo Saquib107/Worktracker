@@ -1,53 +1,41 @@
-import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
-export const registerPushNotifications = async () => {
-  // Only execute in native environment (Android/iOS)
+export const registerLocalNotifications = async () => {
   if (!Capacitor.isNativePlatform()) {
-    console.log("Push notifications not supported on web/PWA yet");
+    console.log("Local notifications not supported on web/PWA");
     return;
   }
 
-  // Request permission to use push notifications
-  // iOS will prompt user and return if they granted permission or not
-  // Android will just grant without prompting
-  let permStatus = await PushNotifications.checkPermissions();
-
-  if (permStatus.receive === 'prompt') {
-    permStatus = await PushNotifications.requestPermissions();
-  }
-
-  if (permStatus.receive !== 'granted') {
-    console.error("User denied push notification permissions");
+  // Request permissions
+  const permStatus = await LocalNotifications.requestPermissions();
+  if (permStatus.display !== 'granted') {
+    console.error("User denied local notification permissions");
     return;
   }
 
-  // Register with Apple / Google to receive push via APNS/FCM
-  await PushNotifications.register();
+  // Clear any existing notifications to avoid duplicates
+  await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
 
-  // Listeners for registration and notifications
-  PushNotifications.addListener('registration', (token) => {
-    console.log('Push registration success, token: ' + token.value);
-    // TODO: Send token to your backend to save it for the user
+  // Schedule daily notification at 5:00 PM
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        title: "Work Tracker Reminder",
+        body: "Please don't forget to fill out your daily work tracker form!",
+        id: 1,
+        schedule: { 
+          on: {
+            hour: 17,
+            minute: 0
+          },
+          allowWhileIdle: true, // Ensures it triggers even in Doze mode
+        },
+        actionTypeId: "",
+        extra: null
+      }
+    ]
   });
-
-  PushNotifications.addListener('registrationError', (error: any) => {
-    console.error('Error on registration: ' + JSON.stringify(error));
-  });
-
-  PushNotifications.addListener(
-    'pushNotificationReceived',
-    (notification) => {
-      console.log('Push received: ' + JSON.stringify(notification));
-      // TODO: Handle foreground notifications (e.g., show a toast)
-    },
-  );
-
-  PushNotifications.addListener(
-    'pushNotificationActionPerformed',
-    (notification) => {
-      console.log('Push action performed: ' + JSON.stringify(notification));
-      // TODO: Handle user tapping on notification (e.g., navigate to specific report)
-    },
-  );
+  
+  console.log("Daily 5:00 PM local notification scheduled.");
 };
