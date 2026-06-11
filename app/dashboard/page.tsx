@@ -280,7 +280,25 @@ export default function DashboardPage() {
 
 
   // --- Exports ---
-          const downloadFile = (dataUrl: string, fileName: string) => {
+            const downloadFile = async (dataUrl: string, fileName: string, base64Data: string) => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform()) {
+        const { Filesystem, Directory } = require('@capacitor/filesystem');
+        
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Documents
+        });
+        
+        alert("File securely saved to your phone's Documents folder!");
+        return;
+      }
+    } catch (e: any) {
+      console.error("Capacitor save failed:", e);
+      alert("Capacitor save failed: " + e.message);
+    }
+
     const a = document.createElement('a');
     a.href = dataUrl;
     a.download = fileName;
@@ -288,7 +306,6 @@ export default function DashboardPage() {
     a.click();
     document.body.removeChild(a);
     
-    // Fallback for mobile HTTP where a.click() might be silently blocked
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
       setTimeout(() => {
@@ -331,10 +348,9 @@ export default function DashboardPage() {
         }
       }
 
-      // Fallback: Base64 Data URL (Works on HTTP mobile connections where Blob/ObjectURL fails)
       const base64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
       const dataUrl = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + base64;
-      downloadFile(dataUrl, fileName);
+      await downloadFile(dataUrl, fileName, base64);
 
     } catch (error: any) {
       console.error('Excel Export Error:', error);
@@ -368,7 +384,7 @@ export default function DashboardPage() {
 
       const base64 = btoa(unescape(encodeURIComponent(csvContent)));
       const dataUrl = "data:text/csv;base64," + base64;
-      downloadFile(dataUrl, fileName);
+      await downloadFile(dataUrl, fileName, base64);
 
     } catch (error: any) {
       console.error('CSV Export Error:', error);
@@ -412,7 +428,8 @@ export default function DashboardPage() {
       }
 
       const dataUrl = doc.output('datauristring');
-      downloadFile(dataUrl, fileName);
+      const base64 = dataUrl.split(',')[1];
+      await downloadFile(dataUrl, fileName, base64);
 
     } catch (error: any) {
       console.error('PDF Export Error:', error);
@@ -638,7 +655,7 @@ export default function DashboardPage() {
               {/* Range Filters & Exports */}
               <div className="p-4 md:px-6 md:py-5 border-b border-border flex flex-col md:flex-row justify-between items-center gap-4 bg-card">
                 {/* VERSION INDICATOR TO CHECK CACHE */}
-                <div className="w-full text-center text-xs font-bold text-red-500 pb-2">v3.0 - Mobile Download Fix Active</div>
+                <div className="w-full text-center text-xs font-bold text-red-500 pb-2">v4.0 - Native Capacitor Filesystem Active</div>
                 <div className="flex bg-secondary rounded-lg p-1 w-full md:w-auto overflow-x-auto custom-scrollbar">
                   {['All Reports', 'Today\'s Reports', 'Weekly Reports', 'This Month'].map(r => (
                     <button 
