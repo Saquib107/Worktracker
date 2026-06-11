@@ -280,54 +280,72 @@ export default function DashboardPage() {
 
 
   // --- Exports ---
-  const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(entries.map(e => ({
-      Date: e.work_date,
-      Employee: e.pgepl_users?.name || 'N/A',
-      Department: e.department,
-      KRA: (e.kra_category || '').replace(/_/g, ' '),
-      'Tasks Done': e.tasks_text || '',
-      Hours: e.hours_spent,
-      Status: e.task_status,
-      Issues: e.has_issue ? 'Yes' : 'No',
-      'Issue Description': e.issue_description || '',
-      'Plan For Tomorrow': e.plan_for_tomorrow || ''
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Reports");
-    XLSX.writeFile(wb, `PGEPL_Export_${reportRangeFilter.replace(/ /g, '_')}.xlsx`);
+    const handleExportExcel = () => {
+    try {
+      const validEntries = entries.filter(e => e);
+      const ws = XLSX.utils.json_to_sheet(validEntries.map(e => ({
+        Date: e.work_date || '',
+        Employee: e.pgepl_users?.name || 'N/A',
+        Department: e.department || '',
+        KRA: String(e.kra_category || '').replace(/_/g, ' '),
+        'Tasks Done': String(e.tasks_text || ''),
+        Hours: Number(e.hours_spent || 0),
+        Status: String(e.task_status || ''),
+        Issues: e.has_issue ? 'Yes' : 'No',
+        'Issue Description': String(e.issue_description || ''),
+        'Plan For Tomorrow': String(e.plan_for_tomorrow || '')
+      })));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Reports");
+      XLSX.writeFile(wb, `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.xlsx`);
+    } catch (error: any) {
+      console.error('Excel Export Error:', error);
+      alert('Failed to export Excel: ' + (error.message || 'Unknown error'));
+    }
   };
 
   const handleExportCSV = () => {
-    const headers = ['Date', 'Employee', 'Department', 'KRA', 'Hours', 'Status'];
-    const csvContent = [
-      headers.join(','),
-      ...entries.map(e => `"${e.work_date}","${e.pgepl_users?.name}","${e.department}","${e.kra_category}","${e.hours_spent}","${e.task_status}"`)
-    ].join('\n');
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
-    link.download = `PGEPL_Export_${reportRangeFilter.replace(/ /g, '_')}.csv`;
-    link.click();
+    try {
+      const validEntries = entries.filter(e => e);
+      const headers = ['Date', 'Employee', 'Department', 'KRA', 'Hours', 'Status'];
+      const csvContent = [
+        headers.join(','),
+        ...validEntries.map(e => `"${e.work_date || ''}","${e.pgepl_users?.name || 'N/A'}","${e.department || ''}","${String(e.kra_category || '').replace(/_/g, ' ')}","${e.hours_spent || 0}","${e.task_status || ''}"`)
+      ].join('\n');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
+      link.download = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.csv`;
+      link.click();
+    } catch (error: any) {
+      console.error('CSV Export Error:', error);
+      alert('Failed to export CSV: ' + (error.message || 'Unknown error'));
+    }
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text(`PGEPL Report: ${reportRangeFilter}`, 14, 15);
-    autoTable(doc, {
-      startY: 20,
-      headStyles: { fillColor: [26, 46, 74] }, // Navy blue
-      head: [['Date', 'Employee', 'Dept', 'KRA', 'Tasks', 'Hrs', 'Status']],
-      body: entries.map(e => [
-        e.work_date, 
-        e.pgepl_users?.name || 'N/A', 
-        e.department, 
-        (e.kra_category || '').replace(/_/g, ' '), 
-        (e.tasks_text || '').substring(0, 100) + ((e.tasks_text?.length || 0) > 100 ? '...' : ''),
-        e.hours_spent,
-        e.task_status
-      ]),
-    });
-    doc.save(`PGEPL_Report_${reportRangeFilter.replace(/ /g, '_')}.pdf`);
+    try {
+      const validEntries = entries.filter(e => e);
+      const doc = new jsPDF();
+      doc.text(`PGEPL Report: ${reportRangeFilter || 'All'}`, 14, 15);
+      autoTable(doc, {
+        startY: 20,
+        headStyles: { fillColor: [26, 46, 74] },
+        head: [['Date', 'Employee', 'Dept', 'KRA', 'Tasks', 'Hrs', 'Status']],
+        body: validEntries.map(e => [
+          e.work_date || '', 
+          e.pgepl_users?.name || 'N/A', 
+          e.department || '', 
+          String(e.kra_category || '').replace(/_/g, ' '), 
+          String(e.tasks_text || '').substring(0, 100) + (String(e.tasks_text || '').length > 100 ? '...' : ''),
+          String(e.hours_spent || 0),
+          String(e.task_status || '')
+        ]),
+      });
+      doc.save(`PGEPL_Report_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.pdf`);
+    } catch (error: any) {
+      console.error('PDF Export Error:', error);
+      alert('Failed to export PDF: ' + (error.message || 'Unknown error'));
+    }
   };
 
   const getAuditIcon = (action: string) => {
