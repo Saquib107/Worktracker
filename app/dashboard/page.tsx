@@ -64,6 +64,7 @@ export default function DashboardPage() {
 
   // Analytics States
   const [analyticsDate, setAnalyticsDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [trendTab, setTrendTab] = useState('Hours');
 
   // Admin New Inputs
   const [newDept, setNewDept] = useState('');
@@ -261,22 +262,39 @@ export default function DashboardPage() {
     const dStr = format(d, 'yyyy-MM-dd');
     const dayEntries = entries.filter(e => e.work_date === dStr);
     const dayHours = dayEntries.reduce((sum, e) => sum + Number(e.hours_spent), 0);
-    trendsData.push({ date: format(d, 'MMM dd'), hours: dayHours });
+    const daySubmits = new Set(dayEntries.map(e => e.user_id)).size;
+    const activeEmps = employees.length || 1;
+    trendsData.push({ 
+      date: format(d, 'MMM dd'), 
+      hours: dayHours,
+      productivity: daySubmits > 0 ? parseFloat((dayHours / daySubmits).toFixed(1)) : 0,
+      submissions: daySubmits,
+      consistency: Math.round((daySubmits / activeEmps) * 100)
+    });
   }
 
-  // Submission Status Data
+  // Submission Status Data (Today)
   const totalEmps = employees.length || 1;
   const completedCount = todaysEntries.length;
-  // Late = submitted after 5PM local time for the work_date
-  const lateCount = todaysEntries.filter(e => new Date(e.submitted_at).getHours() >= 17).length;
-  const onTimeCount = completedCount - lateCount;
   const pendingCount = Math.max(0, totalEmps - completedCount);
-  
-  const submissionData = [
-    { name: 'Completed', value: onTimeCount, color: '#10b981' }, // green
-    { name: 'Late', value: lateCount, color: '#f59e0b' }, // yellow
-    { name: 'Pending', value: pendingCount, color: '#ef4444' } // red
-  ].filter(d => d.value > 0);
+  const submitPercent = Math.round((completedCount / totalEmps) * 100);
+
+  // Trend Comparisons (Last 7 days vs Previous 7 Days)
+  const getPeriodStats = (startDaysAgo: number, endDaysAgo: number) => {
+    let hrs = 0;
+    let subs = 0;
+    for(let i=startDaysAgo; i>=endDaysAgo; i--) {
+      const d = format(subDays(new Date(), i), 'yyyy-MM-dd');
+      const dayEnts = entries.filter(e => e.work_date === d);
+      hrs += dayEnts.reduce((sum, e) => sum + Number(e.hours_spent), 0);
+      subs += new Set(dayEnts.map(e => e.user_id)).size;
+    }
+    return { hrs, subs };
+  };
+  const last7 = getPeriodStats(6, 0);
+  const prev7 = getPeriodStats(13, 7);
+  const trendHours = prev7.hrs ? Math.round(((last7.hrs - prev7.hrs)/prev7.hrs)*100) : 0;
+  const trendSubs = prev7.subs ? Math.round(((last7.subs - prev7.subs)/prev7.subs)*100) : 0;
 
   // --- Compliance & Discipline Calculation ---
   const getBusinessDays = (startDate: Date, endDate: Date) => {
@@ -291,66 +309,62 @@ export default function DashboardPage() {
   };
 
   const complianceData = employees.map(emp => {
-    // Find all unique dates this employee has submitted
     const empEntries = entries.filter(e => e.user_id === emp.id || e.pgepl_users?.name === emp.name);
     const uniqueDays = new Set(empEntries.map(e => e.work_date));
     const daysSubmitted = uniqueDays.size;
+    const totalHours = empEntries.reduce((sum, e) => sum + Number(e.hours_spent), 0);
 
-    // Calculate total business days since their first entry (or account creation)
     const firstEntryDate = empEntries.length > 0 
       ? new Date(Math.min(...empEntries.map(e => new Date(e.work_date).getTime())))
-      : new Date(emp.created_at || Date.now()); // fallback
+      : new Date(emp.created_at || Date.now());
     
-    // Total business days up to today
     const totalBusinessDays = Math.max(1, getBusinessDays(firstEntryDate, new Date()));
-    
     let coverage = Math.round((daysSubmitted / totalBusinessDays) * 100);
-    // Cap at 100% just in case they worked weekends
     if (coverage > 100) coverage = 100;
 
-    let status = 'Concern';
-    let color = '#ef4444'; // red
+    let status = 'High Risk';
+    let color = '#ef4444'; 
     let bgClass = 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30';
     let textClass = 'text-red-700 dark:text-red-400';
+    let iconClass = 'text-red-500';
     if (coverage >= 60) { 
-      status = 'Regular'; 
-      color = '#10b981'; 
-      bgClass = 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30';
-      textClass = 'text-emerald-700 dark:text-emerald-400';
+      status = 'Star Player'; color = '#10b981'; bgClass = 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30'; textClass = 'text-emerald-700 dark:text-emerald-400'; iconClass = 'text-emerald-500';
     } else if (coverage >= 20) { 
-      status = 'Moderate'; 
-      color = '#f59e0b'; 
-      bgClass = 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30';
-      textClass = 'text-amber-700 dark:text-amber-400';
+      status = 'Needs Attention'; color = '#f59e0b'; bgClass = 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30'; textClass = 'text-amber-700 dark:text-amber-400'; iconClass = 'text-amber-500';
     }
 
-    // Calculate last 14 days sparkline for this employee
+    // Streak logic (working backwards from today)
+    let streak = 0;
+    for(let i=0; i<30; i++) {
+      const d = subDays(new Date(), i);
+      if(d.getDay() === 0 || d.getDay() === 6) continue; // skip weekends
+      if(uniqueDays.has(format(d, 'yyyy-MM-dd'))) streak++;
+      else break;
+    }
+
     const sparkline = [];
     for (let i = 13; i >= 0; i--) {
       const d = subDays(new Date(), i);
-      const dStr = format(d, 'yyyy-MM-dd');
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const hasSubmitted = uniqueDays.has(dStr);
-      sparkline.push({ date: format(d, 'MMM dd'), submitted: hasSubmitted ? 1 : 0, isWeekend });
+      sparkline.push({ date: format(d, 'MMM dd'), submitted: uniqueDays.has(format(d, 'yyyy-MM-dd')) ? 1 : 0, isWeekend, dayName: format(d, 'E') });
     }
 
-    return {
-      ...emp,
-      daysSubmitted,
-      totalBusinessDays,
-      coverage,
-      status,
-      color,
-      bgClass,
-      textClass,
-      sparkline,
-      firstEntryDate: format(firstEntryDate, 'dd MMM yyyy')
-    };
+    return { ...emp, daysSubmitted, totalBusinessDays, totalHours, coverage, status, color, bgClass, textClass, iconClass, sparkline, streak };
   }).sort((a, b) => b.coverage - a.coverage);
 
-  const starPlayers = complianceData.filter(c => c.status === 'Regular');
-  const moderatePlayers = complianceData.filter(c => c.status === 'Moderate');
-  const concernPlayers = complianceData.filter(c => c.status === 'Concern');
+  const starPlayers = complianceData.filter(c => c.status === 'Star Player');
+  const moderatePlayers = complianceData.filter(c => c.status === 'Needs Attention');
+  const concernPlayers = complianceData.filter(c => c.status === 'High Risk');
+
+  const avgConsistency = Math.round(complianceData.reduce((sum, e) => sum + e.coverage, 0) / (complianceData.length || 1));
+  const workforceHealth = Math.round((submitPercent + avgConsistency) / 2);
+
+  // Advanced Dept Leaderboard
+  const deptLeaderboard = Object.entries(deptProd).map(([name, hours]) => {
+    const deptEmps = complianceData.filter(e => e.department === name);
+    const avgCov = deptEmps.length ? Math.round(deptEmps.reduce((s, e) => s + e.coverage, 0) / deptEmps.length) : 0;
+    return { name, hours, productivity: avgCov };
+  }).sort((a,b) => b.hours - a.hours);
 
   // --- Exports ---
               const downloadFile = async (dataUrl: string, fileName: string, base64Data: string) => {
@@ -876,243 +890,343 @@ export default function DashboardPage() {
 
           {/* ANALYTICS TAB */}
           {activeTab === 'Analytics' && (
-            <motion.div key="analytics" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+            <motion.div key="analytics" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-8">
               
+              {/* SECTION 1: Executive KPI Row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-card border border-border p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Submit %</p>
+                    <CheckCircle size={18} className="text-primary" />
+                  </div>
+                  <div className="flex items-end gap-3">
+                    <h3 className="text-4xl font-display font-bold text-foreground">{submitPercent}%</h3>
+                    {trendSubs !== 0 && (
+                      <span className={`text-xs font-bold mb-1 flex items-center ${trendSubs > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {trendSubs > 0 ? '↑' : '↓'} {Math.abs(trendSubs)}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">vs previous 7 days</p>
+                </div>
+
+                <div className="bg-card border border-border p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Pending</p>
+                    <Clock size={18} className="text-amber-500" />
+                  </div>
+                  <div className="flex items-end gap-3">
+                    <h3 className="text-4xl font-display font-bold text-foreground">{pendingCount}</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Employees missing today</p>
+                </div>
+
+                <div className="bg-card border border-border p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total Hours</p>
+                    <Activity size={18} className="text-blue-500" />
+                  </div>
+                  <div className="flex items-end gap-3">
+                    <h3 className="text-4xl font-display font-bold text-foreground">{last7.hrs}h</h3>
+                    {trendHours !== 0 && (
+                      <span className={`text-xs font-bold mb-1 flex items-center ${trendHours > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {trendHours > 0 ? '↑' : '↓'} {Math.abs(trendHours)}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Logged last 7 days</p>
+                </div>
+
+                <div className="bg-card border border-border p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">At Risk</p>
+                    <AlertCircle size={18} className="text-red-500" />
+                  </div>
+                  <div className="flex items-end gap-3">
+                    <h3 className="text-4xl font-display font-bold text-foreground">{concernPlayers.length}</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Critically low consistency</p>
+                </div>
+              </div>
+
+              {/* SECTION 2: Workforce Health Score */}
+              <div className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] border border-border p-8 rounded-2xl shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                
+                <h2 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
+                  <Activity className="text-primary" /> Workforce Health Score
+                </h2>
+                
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  <div className="flex-shrink-0 text-center md:text-left w-full md:w-auto">
+                    <span className="text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-br from-primary to-blue-400">
+                      {workforceHealth}%
+                    </span>
+                    <p className="text-sm font-bold text-slate-400 mt-2 uppercase tracking-widest">Overall Rating</p>
+                  </div>
+                  
+                  <div className="flex-1 w-full space-y-6 z-10">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        <span>Consistency</span>
+                        <span>{avgConsistency}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div initial={{width:0}} animate={{width:`${avgConsistency}%`}} transition={{duration:1}} className="h-full bg-emerald-500"></motion.div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        <span>Today's Attendance</span>
+                        <span>{submitPercent}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div initial={{width:0}} animate={{width:`${submitPercent}%`}} transition={{duration:1}} className="h-full bg-blue-500"></motion.div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3 & 9: Dept Leaderboard & AI Insights */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-card border border-border rounded-xl shadow-sm p-6 flex flex-col">
+                  <h3 className="font-bold text-foreground mb-4 uppercase tracking-wider text-xs">Department Leaderboard</h3>
+                  <div className="overflow-x-auto flex-1">
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="text-muted-foreground border-b border-border/50">
+                          <th className="pb-2 font-medium">Rank</th>
+                          <th className="pb-2 font-medium">Department</th>
+                          <th className="pb-2 font-medium text-right">Hours</th>
+                          <th className="pb-2 font-medium text-right">Avg Productivity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deptLeaderboard.slice(0,5).map((dept, idx) => (
+                          <tr key={idx} className="border-b border-border/20 last:border-0 hover:bg-secondary/10">
+                            <td className="py-3 font-bold text-lg">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx+1}</td>
+                            <td className="py-3 font-medium text-foreground">{dept.name}</td>
+                            <td className="py-3 text-right font-mono text-muted-foreground">{dept.hours}h</td>
+                            <td className="py-3 text-right font-bold text-primary">{dept.productivity}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div className="bg-card border border-border rounded-xl shadow-sm p-6 flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-foreground uppercase tracking-wider text-xs flex items-center gap-2">
+                      <Sparkles size={14} className="text-purple-500" /> AI Insights
+                    </h3>
+                    <button 
+                      onClick={handleGenerateSummary}
+                      disabled={isGeneratingAi}
+                      className="text-xs bg-secondary hover:bg-border text-foreground px-3 py-1 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {isGeneratingAi ? 'Analyzing...' : 'Refresh AI'}
+                    </button>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center">
+                    {aiSummary ? (
+                      <div className="prose prose-sm dark:prose-invert text-muted-foreground whitespace-pre-wrap">{aiSummary}</div>
+                    ) : (
+                      <ul className="space-y-4 text-sm text-muted-foreground">
+                        <li className="flex items-start gap-2">
+                          <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></div>
+                          <span>{deptLeaderboard[0]?.name || 'One'} department leads productivity at {deptLeaderboard[0]?.productivity || 0}%.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></div>
+                          <span>Submission rate {trendSubs > 0 ? 'increased' : 'dropped'} {Math.abs(trendSubs)}% compared to the previous 7 days.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></div>
+                          <span>{concernPlayers.length} employees may require follow-up regarding low consistency.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                          <span>{starPlayers[0]?.name || 'Top performer'} has maintained a {starPlayers[0]?.streak || 0}-day submission streak.</span>
+                        </li>
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: Analytics Trends */}
+              <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                  <h3 className="font-bold text-foreground uppercase tracking-wider text-xs">Analytics Trends (14 Days)</h3>
+                  <div className="flex bg-secondary p-1 rounded-lg">
+                    {['Hours', 'Productivity', 'Consistency', 'Submissions'].map(tab => (
+                      <button 
+                        key={tab}
+                        onClick={() => setTrendTab(tab)}
+                        className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${trendTab === tab ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} tickMargin={10} minTickGap={15} />
+                      <Tooltip cursor={false} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px', padding: '8px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
+                      <Area 
+                        type="monotone" 
+                        dataKey={trendTab.toLowerCase()} 
+                        stroke="var(--primary)" 
+                        strokeWidth={3} 
+                        fillOpacity={1} 
+                        fill="url(#colorTrend)" 
+                        activeDot={{r: 6, strokeWidth: 0}} 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* SECTION 5: Employee Heatmap */}
+              <div className="bg-card border border-border rounded-xl shadow-sm p-6 overflow-hidden">
+                <h3 className="font-bold text-foreground mb-4 uppercase tracking-wider text-xs">14-Day Consistency Heatmap</h3>
+                <div className="overflow-x-auto custom-scrollbar pb-2">
+                  <table className="w-full text-sm text-left border-separate border-spacing-y-2">
+                    <thead>
+                      <tr>
+                        <th className="pb-2 text-muted-foreground font-medium min-w-[120px]">Employee</th>
+                        {trendsData.map((d, i) => (
+                          <th key={i} className="pb-2 text-muted-foreground font-medium text-center text-[10px] w-8">
+                            {d.date.split(' ')[1]}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {complianceData.slice(0, 15).map(emp => (
+                        <tr key={emp.id} className="group">
+                          <td className="py-1 font-medium text-foreground text-xs whitespace-nowrap">{emp.name}</td>
+                          {emp.sparkline.map((day: any, i: number) => (
+                            <td key={i} className="py-1 px-0.5 text-center">
+                              <div 
+                                title={`${day.date} - ${day.isWeekend ? 'Weekend' : day.submitted ? 'Submitted' : 'Missed'}`}
+                                className={`w-5 h-5 mx-auto rounded-sm transition-all ${day.isWeekend ? 'bg-secondary/50' : day.submitted ? 'bg-emerald-500 group-hover:scale-110 shadow-sm' : 'bg-red-500/20'}`}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {complianceData.length > 15 && <p className="text-xs text-muted-foreground mt-2 text-center">Showing top 15 employees by consistency.</p>}
+                </div>
+              </div>
+
+              {/* SECTION 6 & 7: Risk Table & Top Performers */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* Analytics Left Column */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Top KPI & Trends */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <motion.div variants={itemVariants} className="bg-gradient-to-br from-primary to-[#1a2e4a] text-primary-foreground border border-border p-6 rounded-xl shadow-md">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex flex-col">
-                          <p className="text-sm font-bold text-primary-foreground/80 uppercase tracking-wider mb-2">Total Hours</p>
-                          <input 
-                            type="date" 
-                            value={analyticsDate}
-                            onChange={(e) => setAnalyticsDate(e.target.value)}
-                            className="bg-primary-foreground/20 text-primary-foreground border-none rounded-md px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary-foreground/50 w-fit cursor-pointer"
-                          />
-                        </div>
-                        <Calendar size={20} className="text-primary-foreground/50" />
-                      </div>
-                      <h3 className="text-4xl font-display font-bold">{totalHoursOnDate}h</h3>
-                      <p className="text-xs text-primary-foreground/70 mt-2">Logged on {format(new Date(analyticsDate || new Date()), 'MMM dd, yyyy')}</p>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="bg-card border border-border p-6 rounded-xl shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
-                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Hours Worked Trend</p>
-                        <TrendingUp size={18} className="text-primary" />
-                      </div>
-                      <div className="h-[180px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <XAxis dataKey="date" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} tickMargin={5} minTickGap={15} />
-                            <Tooltip cursor={false} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px', padding: '8px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
-                            <Area type="monotone" dataKey="hours" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" activeDot={{r: 6, strokeWidth: 0}} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </motion.div>
+                {/* Risk Table */}
+                <div className="lg:col-span-2 bg-card border border-border rounded-xl shadow-sm p-6 flex flex-col">
+                  <h3 className="font-bold text-foreground mb-4 uppercase tracking-wider text-xs">Employee Risk Matrix</h3>
+                  <div className="flex gap-4 mb-4">
+                    <div className="bg-emerald-500/10 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/20">STAR PLAYERS: {starPlayers.length}</div>
+                    <div className="bg-amber-500/10 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-500/20">NEEDS ATTENTION: {moderatePlayers.length}</div>
+                    <div className="bg-red-500/10 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-500/20">HIGH RISK: {concernPlayers.length}</div>
                   </div>
-
-                  {/* Dept Productivity Chart */}
-                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm p-6">
-                    <h3 className="font-bold text-foreground mb-6">Department Productivity (All Time Hours)</h3>
-                    <div className="h-[350px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={deptProdData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="colorBar" x1="0" y1="0" x2="1" y2="0">
-                              <stop offset="0%" stopColor="var(--primary)" stopOpacity={1}/>
-                              <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.6}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="var(--border)" opacity={0.5} />
-                          <XAxis type="number" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} />
-                          <YAxis type="category" dataKey="name" tick={{fill: 'var(--foreground)', fontSize: 11, fontWeight: 500}} axisLine={false} tickLine={false} width={100} />
-                          <Tooltip cursor={{fill: 'var(--secondary)'}} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
-                          <Bar dataKey="hours" fill="url(#colorBar)" radius={[0, 6, 6, 0]} barSize={20} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </motion.div>
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
-                  {/* Submission Status Pie Chart */}
-                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm p-6">
-                    <h3 className="font-bold text-foreground mb-4">Submission Status (Today)</h3>
-                    <div className="h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 20 }}>
-                          <Pie
-                            data={submissionData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={55}
-                            outerRadius={75}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                          >
-                            {submissionData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', backdropFilter: 'blur(4px)'}} itemStyle={{color: '#fff'}} />
-                          <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </motion.div>
-
-                  {/* Top Employees Leaderboard */}
-                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[300px] max-h-[400px]">
-                    <div className="border-b border-border bg-secondary/30 px-6 py-4 flex items-center gap-2">
-                      <Award size={18} className="text-yellow-500" />
-                    <h3 className="font-bold text-foreground">Top Performing Employees</h3>
-                  </div>
-                  <div className="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3">
-                    {topEmployees.map((emp, idx) => (
-                      <div key={idx} className="flex flex-col gap-2 bg-secondary/10 p-3 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${idx === 0 ? 'bg-yellow-100 text-yellow-700 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : idx === 1 ? 'bg-slate-200 text-slate-700 shadow-[0_0_10px_rgba(148,163,184,0.3)]' : idx === 2 ? 'bg-orange-100 text-orange-800 shadow-[0_0_10px_rgba(249,115,22,0.3)]' : 'bg-background text-muted-foreground'}`}>
-                            #{idx + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm text-foreground truncate">{emp.name}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-mono font-bold text-primary">{emp.hours}h</p>
-                          </div>
-                        </div>
-                        <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
-                          <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(emp.hours / maxEmployeeHours) * 100}%` }}></div>
-                        </div>
-                      </div>
-                    ))}
-                    {topEmployees.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No data available yet.</p>}
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-
-            {/* --- NEXT-GEN COMPLIANCE DASHBOARD --- */}
-            <motion.div variants={itemVariants} className="mt-8 space-y-6 pt-8 border-t border-border">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
-                    <Activity className="text-primary" /> Employee Discipline & Consistency
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1">Calculated against total business days since their first entry.</p>
-                </div>
-              </div>
-
-              {/* Compliance Overview Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-card border border-emerald-500/30 p-5 rounded-xl shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 flex-shrink-0">
-                    <Award size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-foreground">{starPlayers.length}</h3>
-                    <p className="text-sm text-emerald-600 font-medium">Star Players (60%+)</p>
+                  <div className="overflow-x-auto flex-1">
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="text-muted-foreground border-b border-border/50 text-xs">
+                          <th className="pb-2 font-medium">Employee</th>
+                          <th className="pb-2 font-medium">Dept</th>
+                          <th className="pb-2 font-medium text-right">Score</th>
+                          <th className="pb-2 font-medium text-right">Risk</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/20">
+                        {complianceData.map((emp) => (
+                          <tr key={emp.id} className="hover:bg-secondary/20 cursor-pointer transition-colors" title={`Total business days: ${emp.totalBusinessDays}`}>
+                            <td className="py-2.5 font-medium text-foreground text-xs">{emp.name}</td>
+                            <td className="py-2.5 text-muted-foreground text-xs">{emp.department}</td>
+                            <td className={`py-2.5 font-mono text-right font-bold ${emp.textClass}`}>{emp.coverage}%</td>
+                            <td className="py-2.5 text-right flex justify-end items-center">
+                              {emp.status === 'Star Player' ? <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" title="Star Player" /> : emp.status === 'Needs Attention' ? <div className="w-2.5 h-2.5 rounded-full bg-amber-500" title="Needs Attention" /> : <div className="w-2.5 h-2.5 rounded-full bg-red-500" title="High Risk" />}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-                <div className="bg-card border border-amber-500/30 p-5 rounded-xl shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 flex-shrink-0">
-                    <Activity size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-foreground">{moderatePlayers.length}</h3>
-                    <p className="text-sm text-amber-600 font-medium">Needs Push (20-59%)</p>
-                  </div>
-                </div>
-                <div className="bg-card border border-red-500/30 p-5 rounded-xl shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 flex-shrink-0">
-                    <AlertCircle size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-foreground">{concernPlayers.length}</h3>
-                    <p className="text-sm text-red-600 font-medium">Critical Attention (&lt;20%)</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Employee Health Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {complianceData.map((emp) => (
-                  <div key={emp.id} className={`p-5 rounded-xl border flex flex-col sm:flex-row gap-6 ${emp.bgClass} transition-all hover:shadow-md`}>
-                    
-                    {/* Circular Progress & Info */}
-                    <div className="flex items-center gap-5 flex-1">
-                      <div className="relative w-16 h-16 flex-shrink-0">
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" className="text-foreground/10" />
-                          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke={emp.color} strokeWidth="3" strokeDasharray={`${emp.coverage}, 100`} className="drop-shadow-sm" />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className={`text-xs font-bold ${emp.textClass}`}>{emp.coverage}%</span>
-                        </div>
+                {/* Top Performers */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-foreground mb-4 uppercase tracking-wider text-xs">Top Performers</h3>
+                  {starPlayers.slice(0,3).map((emp, idx) => (
+                    <div key={emp.id} className="bg-gradient-to-br from-card to-secondary/30 border border-emerald-500/30 rounded-xl p-4 flex gap-4 items-center shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-2 text-4xl opacity-10">
+                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                       </div>
-                      
-                      <div>
-                        <h3 className="font-bold text-foreground text-lg leading-tight">{emp.name}</h3>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-0.5">{emp.department}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${emp.bgClass} ${emp.textClass} border border-current/20`}>
-                            {emp.status}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {emp.daysSubmitted}/{emp.totalBusinessDays} Days
-                          </span>
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center font-bold text-emerald-500 text-lg border border-emerald-500/20 shadow-inner z-10">
+                        {emp.name.charAt(0)}
+                      </div>
+                      <div className="z-10 flex-1">
+                        <h4 className="font-bold text-foreground flex items-center gap-2">
+                          {emp.name} {idx === 0 && <Award size={14} className="text-yellow-500"/>}
+                        </h4>
+                        <div className="flex gap-3 text-xs mt-1">
+                          <span className="text-muted-foreground"><strong className="text-foreground font-mono">{emp.totalHours}</strong> Hrs</span>
+                          <span className="text-muted-foreground"><strong className="text-emerald-500 font-mono">{emp.coverage}%</strong> Score</span>
+                          <span className="text-muted-foreground"><strong className="text-primary font-mono">{emp.streak}</strong> Streak</span>
                         </div>
                       </div>
                     </div>
-
-                    {/* Sparkline & Action */}
-                    <div className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-current/10 pt-4 sm:pt-0 sm:pl-6 w-full sm:w-auto">
-                      <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Last 14 Days</p>
-                        <div className="flex gap-1">
-                          {emp.sparkline.map((day: any, i: number) => (
-                            <div 
-                              key={i} 
-                              title={`${day.date}: ${day.isWeekend ? 'Weekend' : day.submitted ? 'Submitted' : 'Missed'}`}
-                              className={`w-2 h-6 rounded-sm ${day.isWeekend ? 'bg-secondary' : day.submitted ? 'bg-emerald-500' : 'bg-red-400 opacity-40'}`}
-                            ></div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      {emp.status === 'Concern' && (
-                        <div className="mt-3 text-[10px] font-bold text-red-600 flex items-center gap-1">
-                          <AlertCircle size={12} /> High flight risk
-                        </div>
-                      )}
-                      {emp.status === 'Regular' && (
-                        <div className="mt-3 text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                          <CheckCircle size={12} /> Highly consistent
-                        </div>
-                      )}
+                  ))}
+                  {starPlayers.length === 0 && (
+                    <div className="text-center p-8 bg-secondary/10 rounded-xl border border-border border-dashed text-muted-foreground text-sm">
+                      No star players yet.
                     </div>
-
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
+
+              {/* SECTION 8: HR Action Center */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6">
+                <h3 className="font-bold text-amber-700 dark:text-amber-500 mb-4 uppercase tracking-wider text-xs flex items-center gap-2">
+                  <AlertCircle size={16} /> HR Action Center
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <button className="bg-card border border-amber-500/20 p-4 rounded-lg text-left hover:border-amber-500/50 transition-colors shadow-sm group">
+                    <p className="text-2xl font-bold text-foreground group-hover:text-amber-600 transition-colors">{pendingCount}</p>
+                    <p className="text-xs text-muted-foreground mt-1 font-medium">Employees missed today</p>
+                  </button>
+                  <button className="bg-card border border-red-500/20 p-4 rounded-lg text-left hover:border-red-500/50 transition-colors shadow-sm group">
+                    <p className="text-2xl font-bold text-foreground group-hover:text-red-600 transition-colors">{concernPlayers.length}</p>
+                    <p className="text-xs text-muted-foreground mt-1 font-medium">Below 20% consistency</p>
+                  </button>
+                  <button className="bg-card border border-border p-4 rounded-lg text-left hover:border-primary/50 transition-colors shadow-sm group">
+                    <p className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">{deptLeaderboard.filter(d => d.productivity < 50).length}</p>
+                    <p className="text-xs text-muted-foreground mt-1 font-medium">Depts below 50% target</p>
+                  </button>
+                  <button className="bg-card border border-border p-4 rounded-lg text-left hover:border-primary/50 transition-colors shadow-sm group">
+                    <p className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">{complianceData.filter(e => e.streak === 0 && e.coverage > 0).length}</p>
+                    <p className="text-xs text-muted-foreground mt-1 font-medium">Lost streaks today</p>
+                  </button>
+                </div>
+              </div>
+              
             </motion.div>
-
-          </motion.div>
           )}
 
           {/* EMPLOYEES TAB */}
