@@ -285,7 +285,7 @@ export default function DashboardPage() {
       Date: e.work_date,
       Employee: e.pgepl_users?.name || 'N/A',
       Department: e.department,
-      KRA: e.kra_category.replace(/_/g, ' '),
+      KRA: (e.kra_category || '').replace(/_/g, ' '),
       'Tasks Done': e.tasks_text || '',
       Hours: e.hours_spent,
       Status: e.task_status,
@@ -321,7 +321,7 @@ export default function DashboardPage() {
         e.work_date, 
         e.pgepl_users?.name || 'N/A', 
         e.department, 
-        e.kra_category.replace(/_/g, ' '), 
+        (e.kra_category || '').replace(/_/g, ' '), 
         (e.tasks_text || '').substring(0, 100) + ((e.tasks_text?.length || 0) > 100 ? '...' : ''),
         e.hours_spent,
         e.task_status
