@@ -13,6 +13,8 @@ import { registerLocalNotifications } from '@/lib/push';
 
 const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
 const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
+const AreaChart = dynamic(() => import('recharts').then(mod => mod.AreaChart), { ssr: false });
+const Area = dynamic(() => import('recharts').then(mod => mod.Area), { ssr: false });
 const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
 const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false });
 const PieChart = dynamic(() => import('recharts').then(mod => mod.PieChart), { ssr: false });
@@ -242,6 +244,8 @@ export default function DashboardPage() {
   const topEmployees = Object.entries(empHours)
     .map(([name, hours]) => ({ name, hours }))
     .sort((a,b) => b.hours - a.hours);
+  const maxEmployeeHours = topEmployees.length > 0 ? topEmployees[0].hours : 1;
+  const todaysAuditLogs = auditLogs.filter(log => new Date(log.timestamp).toDateString() === new Date().toDateString());
 
   // Dept Productivity
   const deptProd: Record<string, number> = {};
@@ -359,7 +363,7 @@ export default function DashboardPage() {
       {/* TABS */}
       <div className="bg-card border-b border-border sticky top-[73px] z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex overflow-x-auto custom-scrollbar">
-          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs', 'Head HR'].map(tab => (
+          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs (Today)', 'Head HR'].map(tab => (
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
@@ -730,10 +734,16 @@ export default function DashboardPage() {
                       </div>
                       <div className="h-[120px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={trendsData}>
-                            <Tooltip cursor={false} contentStyle={{backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)', fontSize: '12px', padding: '4px 8px'}} />
-                            <Line type="monotone" dataKey="hours" stroke="var(--primary)" strokeWidth={3} dot={{r: 3, fill: 'var(--primary)'}} activeDot={{r: 5}} />
-                          </LineChart>
+                          <AreaChart data={trendsData}>
+                            <defs>
+                              <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <Tooltip cursor={false} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px', padding: '8px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
+                            <Area type="monotone" dataKey="hours" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" activeDot={{r: 6, strokeWidth: 0}} />
+                          </AreaChart>
                         </ResponsiveContainer>
                       </div>
                     </motion.div>
@@ -745,11 +755,17 @@ export default function DashboardPage() {
                     <div className="h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={deptProdData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                          <defs>
+                            <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--primary)" stopOpacity={1}/>
+                              <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.6}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
                           <XAxis dataKey="name" tick={{fill: 'var(--muted-foreground)', fontSize: 12}} axisLine={false} tickLine={false} />
                           <YAxis tick={{fill: 'var(--muted-foreground)', fontSize: 12}} axisLine={false} tickLine={false} />
-                          <Tooltip cursor={{fill: 'var(--secondary)'}} contentStyle={{backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)', borderRadius: '8px'}} />
-                          <Bar dataKey="hours" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={40} />
+                          <Tooltip cursor={{fill: 'var(--secondary)'}} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
+                          <Bar dataKey="hours" fill="url(#colorBar)" radius={[6, 6, 0, 0]} barSize={40} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -768,17 +784,18 @@ export default function DashboardPage() {
                             data={submissionData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
+                            innerRadius={65}
+                            outerRadius={85}
                             paddingAngle={5}
                             dataKey="value"
+                            stroke="none"
                           >
                             {submissionData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip contentStyle={{backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)', borderRadius: '8px'}} />
-                          <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                          <Tooltip contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', backdropFilter: 'blur(4px)'}} itemStyle={{color: '#fff'}} />
+                          <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -792,15 +809,20 @@ export default function DashboardPage() {
                   </div>
                   <div className="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3">
                     {topEmployees.map((emp, idx) => (
-                      <div key={idx} className="flex items-center gap-4 bg-secondary/20 p-3 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${idx === 0 ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : idx === 1 ? 'bg-slate-200 text-slate-700 border border-slate-300' : idx === 2 ? 'bg-orange-100 text-orange-800 border border-orange-300' : 'bg-background text-muted-foreground'}`}>
-                          #{idx + 1}
+                      <div key={idx} className="flex flex-col gap-2 bg-secondary/10 p-3 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${idx === 0 ? 'bg-yellow-100 text-yellow-700 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : idx === 1 ? 'bg-slate-200 text-slate-700 shadow-[0_0_10px_rgba(148,163,184,0.3)]' : idx === 2 ? 'bg-orange-100 text-orange-800 shadow-[0_0_10px_rgba(249,115,22,0.3)]' : 'bg-background text-muted-foreground'}`}>
+                            #{idx + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm text-foreground truncate">{emp.name}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-mono font-bold text-primary">{emp.hours}h</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-foreground truncate">{emp.name}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-mono font-bold text-primary">{emp.hours}h</p>
+                        <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(emp.hours / maxEmployeeHours) * 100}%` }}></div>
                         </div>
                       </div>
                     ))}
@@ -859,7 +881,7 @@ export default function DashboardPage() {
           )}
 
           {/* AUDIT LOGS TAB */}
-          {activeTab === 'Audit Logs' && (
+          {activeTab === 'Audit Logs (Today)' && (
             <motion.div key="audit" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="bg-card border border-border rounded-xl shadow-sm overflow-hidden h-[750px] flex flex-col">
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 {/* Desktop Table */}
@@ -874,7 +896,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50 text-sm">
-                      {auditLogs.map(log => (
+                      {todaysAuditLogs.map(log => (
                         <tr key={log.id} className="hover:bg-secondary/20 transition-colors">
                           <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
                           <td className="px-6 py-4 font-bold text-foreground whitespace-nowrap">{log.pgepl_users?.name || 'System'}</td>
@@ -892,7 +914,7 @@ export default function DashboardPage() {
                           </td>
                         </tr>
                       ))}
-                      {auditLogs.length === 0 && (
+                      {todaysAuditLogs.length === 0 && (
                         <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">No audit logs available.</td></tr>
                       )}
                     </tbody>
@@ -901,7 +923,7 @@ export default function DashboardPage() {
 
                 {/* Mobile Cards */}
                 <div className="md:hidden flex flex-col gap-3 p-4">
-                  {auditLogs.map(log => (
+                  {todaysAuditLogs.map(log => (
                     <div key={`mob-${log.id}`} className="bg-card border border-border p-4 rounded-xl shadow-sm flex flex-col gap-2">
                       <div className="flex justify-between items-start">
                         <span className="font-bold text-foreground">{log.pgepl_users?.name || 'System'}</span>
@@ -917,7 +939,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
-                  {auditLogs.length === 0 && (
+                  {todaysAuditLogs.length === 0 && (
                     <div className="text-center py-10 text-muted-foreground text-sm">No audit logs available.</div>
                   )}
                 </div>
