@@ -281,7 +281,7 @@ export default function DashboardPage() {
 
   // --- Exports ---
   const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(filteredReports.map(e => ({
+    const ws = XLSX.utils.json_to_sheet(entries.map(e => ({
       Date: e.work_date,
       Employee: e.pgepl_users?.name || 'N/A',
       Department: e.department,
@@ -302,7 +302,7 @@ export default function DashboardPage() {
     const headers = ['Date', 'Employee', 'Department', 'KRA', 'Hours', 'Status'];
     const csvContent = [
       headers.join(','),
-      ...filteredReports.map(e => `"${e.work_date}","${e.pgepl_users?.name}","${e.department}","${e.kra_category}","${e.hours_spent}","${e.task_status}"`)
+      ...entries.map(e => `"${e.work_date}","${e.pgepl_users?.name}","${e.department}","${e.kra_category}","${e.hours_spent}","${e.task_status}"`)
     ].join('\n');
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
@@ -317,7 +317,7 @@ export default function DashboardPage() {
       startY: 20,
       headStyles: { fillColor: [26, 46, 74] }, // Navy blue
       head: [['Date', 'Employee', 'Dept', 'KRA', 'Tasks', 'Hrs', 'Status']],
-      body: filteredReports.map(e => [
+      body: entries.map(e => [
         e.work_date, 
         e.pgepl_users?.name || 'N/A', 
         e.department, 
@@ -732,7 +732,7 @@ export default function DashboardPage() {
                         <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Hours Worked Trend</p>
                         <TrendingUp size={18} className="text-primary" />
                       </div>
-                      <div className="h-[120px]">
+                      <div className="h-[180px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                             <defs>
@@ -741,7 +741,7 @@ export default function DashboardPage() {
                                 <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
-                            <XAxis dataKey="date" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} tickMargin={10} />
+                            <XAxis dataKey="date" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} tickMargin={5} minTickGap={15} />
                             <Tooltip cursor={false} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px', padding: '8px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
                             <Area type="monotone" dataKey="hours" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" activeDot={{r: 6, strokeWidth: 0}} />
                           </AreaChart>
@@ -762,11 +762,11 @@ export default function DashboardPage() {
                               <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.6}/>
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
-                          <XAxis dataKey="name" tick={{fill: 'var(--muted-foreground)', fontSize: 12}} axisLine={false} tickLine={false} />
-                          <YAxis tick={{fill: 'var(--muted-foreground)', fontSize: 12}} axisLine={false} tickLine={false} />
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="var(--border)" opacity={0.5} />
+                          <XAxis type="number" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} />
+                          <YAxis type="category" dataKey="name" tick={{fill: 'var(--foreground)', fontSize: 11, fontWeight: 500}} axisLine={false} tickLine={false} width={100} />
                           <Tooltip cursor={{fill: 'var(--secondary)'}} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
-                          <Bar dataKey="hours" fill="url(#colorBar)" radius={[6, 6, 0, 0]} barSize={40} />
+                          <Bar dataKey="hours" fill="url(#colorBar)" radius={[0, 6, 6, 0]} barSize={20} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
