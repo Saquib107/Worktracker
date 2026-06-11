@@ -1109,7 +1109,7 @@ export default function DashboardPage() {
                         strokeWidth={3} 
                         fillOpacity={1} 
                         fill="url(#colorTrend)" 
-                        activeDot={{r: 6, strokeWidth: 0, fill: 'var(--primary)', stroke: '#fff', strokeWidth: 2}} 
+                        activeDot={{r: 6, fill: 'var(--primary)', stroke: '#fff', strokeWidth: 2}} 
                       />
                     </AreaChart>
                   </ResponsiveContainer>
