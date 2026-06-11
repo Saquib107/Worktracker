@@ -1114,6 +1114,40 @@ export default function DashboardPage() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+                
+                {/* Trend Records Breakdown */}
+                <div className="mt-6 pt-4 border-t border-border">
+                  <details className="group">
+                    <summary className="text-xs font-bold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors flex items-center gap-2 select-none">
+                      <span className="group-open:rotate-90 transition-transform text-[10px]">▶</span>
+                      View Daily Records Breakdown
+                    </summary>
+                    <div className="mt-4 overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-xs text-left">
+                        <thead>
+                          <tr className="text-muted-foreground border-b border-border/50">
+                            <th className="pb-2 font-medium">Date</th>
+                            <th className="pb-2 font-medium text-right">Total Hours</th>
+                            <th className="pb-2 font-medium text-right">Avg Productivity</th>
+                            <th className="pb-2 font-medium text-right">Submissions</th>
+                            <th className="pb-2 font-medium text-right">Consistency</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/20">
+                          {[...trendsData].reverse().map((d, i) => (
+                            <tr key={i} className="hover:bg-secondary/20 transition-colors">
+                              <td className="py-2 font-medium text-foreground">{d.date}</td>
+                              <td className="py-2 text-right font-mono">{d.hours}h</td>
+                              <td className="py-2 text-right font-mono">{d.productivity}h/emp</td>
+                              <td className="py-2 text-right font-mono">{d.submissions}</td>
+                              <td className="py-2 text-right font-mono text-primary">{d.consistency}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </div>
               </div>
 
               {/* SECTION 5: Employee Heatmap */}
