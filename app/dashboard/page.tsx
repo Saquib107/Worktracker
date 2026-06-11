@@ -637,6 +637,8 @@ export default function DashboardPage() {
               
               {/* Range Filters & Exports */}
               <div className="p-4 md:px-6 md:py-5 border-b border-border flex flex-col md:flex-row justify-between items-center gap-4 bg-card">
+                {/* VERSION INDICATOR TO CHECK CACHE */}
+                <div className="w-full text-center text-xs font-bold text-red-500 pb-2">v3.0 - Mobile Download Fix Active</div>
                 <div className="flex bg-secondary rounded-lg p-1 w-full md:w-auto overflow-x-auto custom-scrollbar">
                   {['All Reports', 'Today\'s Reports', 'Weekly Reports', 'This Month'].map(r => (
                     <button 
