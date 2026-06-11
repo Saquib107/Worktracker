@@ -280,7 +280,7 @@ export default function DashboardPage() {
 
 
   // --- Exports ---
-    const handleExportExcel = () => {
+      const handleExportExcel = () => {
     try {
       const validEntries = entries.filter(e => e);
       const ws = XLSX.utils.json_to_sheet(validEntries.map(e => ({
@@ -297,7 +297,17 @@ export default function DashboardPage() {
       })));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Reports");
-      XLSX.writeFile(wb, `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.xlsx`);
+      
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error('Excel Export Error:', error);
       alert('Failed to export Excel: ' + (error.message || 'Unknown error'));
@@ -312,10 +322,15 @@ export default function DashboardPage() {
         headers.join(','),
         ...validEntries.map(e => `"${e.work_date || ''}","${e.pgepl_users?.name || 'N/A'}","${e.department || ''}","${String(e.kra_category || '').replace(/_/g, ' ')}","${e.hours_spent || 0}","${e.task_status || ''}"`)
       ].join('\n');
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
-      link.download = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.csv`;
-      link.click();
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error('CSV Export Error:', error);
       alert('Failed to export CSV: ' + (error.message || 'Unknown error'));
@@ -341,7 +356,16 @@ export default function DashboardPage() {
           String(e.task_status || '')
         ]),
       });
-      doc.save(`PGEPL_Report_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.pdf`);
+      
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PGEPL_Report_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error('PDF Export Error:', error);
       alert('Failed to export PDF: ' + (error.message || 'Unknown error'));
