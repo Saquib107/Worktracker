@@ -60,6 +60,9 @@ export default function DashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
+  // Analytics States
+  const [analyticsDate, setAnalyticsDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
   // Admin New Inputs
   const [newDept, setNewDept] = useState('');
   const [newKra, setNewKra] = useState('');
@@ -226,10 +229,9 @@ export default function DashboardPage() {
   const paginatedReports = filteredReports.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   // --- Analytics Data Prep ---
-  // Total Hours This Week
-  const weekAgo = subDays(new Date(), 7);
-  const entriesThisWeek = entries.filter(e => isAfter(new Date(e.work_date), weekAgo));
-  const totalHoursThisWeek = entriesThisWeek.reduce((sum, e) => sum + Number(e.hours_spent), 0);
+  // Total Hours on Selected Date
+  const entriesOnSelectedDate = entries.filter(e => e.work_date === analyticsDate);
+  const totalHoursOnDate = entriesOnSelectedDate.reduce((sum, e) => sum + Number(e.hours_spent), 0);
 
   // Top Performing Employees (by hours logged all time)
   const empHours: Record<string, number> = {};
@@ -239,8 +241,7 @@ export default function DashboardPage() {
   });
   const topEmployees = Object.entries(empHours)
     .map(([name, hours]) => ({ name, hours }))
-    .sort((a,b) => b.hours - a.hours)
-    .slice(0, 5);
+    .sort((a,b) => b.hours - a.hours);
 
   // Dept Productivity
   const deptProd: Record<string, number> = {};
@@ -281,11 +282,16 @@ export default function DashboardPage() {
       Employee: e.pgepl_users?.name || 'N/A',
       Department: e.department,
       KRA: e.kra_category.replace(/_/g, ' '),
-      Hours: e.hours_spent
+      'Tasks Done': e.tasks_text || '',
+      Hours: e.hours_spent,
+      Status: e.task_status,
+      Issues: e.has_issue ? 'Yes' : 'No',
+      'Issue Description': e.issue_description || '',
+      'Plan For Tomorrow': e.plan_for_tomorrow || ''
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reports");
-    XLSX.writeFile(wb, `PGEPL_Export_${reportRangeFilter.replace(' ', '_')}.xlsx`);
+    XLSX.writeFile(wb, `PGEPL_Export_${reportRangeFilter.replace(/ /g, '_')}.xlsx`);
   };
 
   const handleExportCSV = () => {
@@ -296,7 +302,7 @@ export default function DashboardPage() {
     ].join('\n');
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
-    link.download = `PGEPL_Export_${reportRangeFilter.replace(' ', '_')}.csv`;
+    link.download = `PGEPL_Export_${reportRangeFilter.replace(/ /g, '_')}.csv`;
     link.click();
   };
 
@@ -306,16 +312,27 @@ export default function DashboardPage() {
     autoTable(doc, {
       startY: 20,
       headStyles: { fillColor: [26, 46, 74] }, // Navy blue
-      head: [['Date', 'Employee', 'Dept', 'KRA', 'Hrs']],
+      head: [['Date', 'Employee', 'Dept', 'KRA', 'Tasks', 'Hrs', 'Status']],
       body: filteredReports.map(e => [
         e.work_date, 
         e.pgepl_users?.name || 'N/A', 
         e.department, 
         e.kra_category.replace(/_/g, ' '), 
-        e.hours_spent
+        (e.tasks_text || '').substring(0, 100) + ((e.tasks_text?.length || 0) > 100 ? '...' : ''),
+        e.hours_spent,
+        e.task_status
       ]),
     });
-    doc.save(`PGEPL_Report_${reportRangeFilter.replace(' ', '_')}.pdf`);
+    doc.save(`PGEPL_Report_${reportRangeFilter.replace(/ /g, '_')}.pdf`);
+  };
+
+  const getAuditIcon = (action: string) => {
+    const a = (action || '').toLowerCase();
+    if (a.includes('submit') || a.includes('create') || a.includes('add')) return <CheckCircle size={16} className="text-emerald-500" />;
+    if (a.includes('delete') || a.includes('remove')) return <Trash2 size={16} className="text-red-500" />;
+    if (a.includes('update') || a.includes('edit')) return <Edit2 size={16} className="text-blue-500" />;
+    if (a.includes('login') || a.includes('auth')) return <LogOut size={16} className="text-purple-500" />;
+    return <Activity size={16} className="text-muted-foreground" />;
   };
 
   if (loading || !state.user) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8" /></div>;
@@ -691,11 +708,19 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <motion.div variants={itemVariants} className="bg-gradient-to-br from-primary to-[#1a2e4a] text-primary-foreground border border-border p-6 rounded-xl shadow-md">
                       <div className="flex justify-between items-start mb-4">
-                        <p className="text-sm font-bold text-primary-foreground/80 uppercase tracking-wider">Total Hours This Week</p>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-bold text-primary-foreground/80 uppercase tracking-wider mb-2">Total Hours</p>
+                          <input 
+                            type="date" 
+                            value={analyticsDate}
+                            onChange={(e) => setAnalyticsDate(e.target.value)}
+                            className="bg-primary-foreground/20 text-primary-foreground border-none rounded-md px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary-foreground/50 w-fit cursor-pointer"
+                          />
+                        </div>
                         <Calendar size={20} className="text-primary-foreground/50" />
                       </div>
-                      <h3 className="text-4xl font-display font-bold">{totalHoursThisWeek}h</h3>
-                      <p className="text-xs text-primary-foreground/70 mt-2">Logged in the last 7 days</p>
+                      <h3 className="text-4xl font-display font-bold">{totalHoursOnDate}h</h3>
+                      <p className="text-xs text-primary-foreground/70 mt-2">Logged on {format(new Date(analyticsDate || new Date()), 'MMM dd, yyyy')}</p>
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="bg-card border border-border p-6 rounded-xl shadow-sm">
@@ -760,7 +785,7 @@ export default function DashboardPage() {
                   </motion.div>
 
                   {/* Top Employees Leaderboard */}
-                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[300px]">
+                  <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[300px] max-h-[400px]">
                     <div className="border-b border-border bg-secondary/30 px-6 py-4 flex items-center gap-2">
                       <Award size={18} className="text-yellow-500" />
                     <h3 className="font-bold text-foreground">Top Performing Employees</h3>
@@ -853,8 +878,18 @@ export default function DashboardPage() {
                         <tr key={log.id} className="hover:bg-secondary/20 transition-colors">
                           <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
                           <td className="px-6 py-4 font-bold text-foreground whitespace-nowrap">{log.pgepl_users?.name || 'System'}</td>
-                          <td className="px-6 py-4 text-primary font-medium">{log.action}</td>
-                          <td className="px-6 py-4 text-muted-foreground">{log.details}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {getAuditIcon(log.action)}
+                              <span className="font-medium text-foreground">{log.action}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-1">
+                              {log.target_type && <span className="text-[10px] uppercase tracking-wider bg-secondary/80 text-muted-foreground px-2 py-0.5 rounded-md w-fit font-bold">{log.target_type}</span>}
+                              <span className="text-muted-foreground">{log.details}</span>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                       {auditLogs.length === 0 && (
@@ -872,8 +907,14 @@ export default function DashboardPage() {
                         <span className="font-bold text-foreground">{log.pgepl_users?.name || 'System'}</span>
                         <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">{new Date(log.timestamp).toLocaleDateString()}</span>
                       </div>
-                      <div className="text-primary font-medium text-sm">{log.action}</div>
-                      <div className="text-sm text-muted-foreground mt-1">{log.details}</div>
+                      <div className="flex items-center gap-2 text-foreground font-medium text-sm">
+                        {getAuditIcon(log.action)}
+                        {log.action}
+                      </div>
+                      <div className="flex flex-col gap-1 mt-1">
+                        {log.target_type && <span className="text-[10px] uppercase tracking-wider bg-secondary text-muted-foreground px-2 py-0.5 rounded-md w-fit font-bold">{log.target_type}</span>}
+                        <span className="text-sm text-muted-foreground">{log.details}</span>
+                      </div>
                     </div>
                   ))}
                   {auditLogs.length === 0 && (
