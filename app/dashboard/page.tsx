@@ -1085,7 +1085,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Last 14 Days</p>
                         <div className="flex gap-1">
-                          {emp.sparkline.map((day, i) => (
+                          {emp.sparkline.map((day: any, i: number) => (
                             <div 
                               key={i} 
                               title={`${day.date}: ${day.isWeekend ? 'Weekend' : day.submitted ? 'Submitted' : 'Missed'}`}
