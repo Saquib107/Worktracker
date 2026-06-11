@@ -363,7 +363,7 @@ export default function DashboardPage() {
       {/* TABS */}
       <div className="bg-card border-b border-border sticky top-[73px] z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex overflow-x-auto custom-scrollbar">
-          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs (Today)', 'Head HR'].map(tab => (
+          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs', 'Head HR'].map(tab => (
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
@@ -734,13 +734,14 @@ export default function DashboardPage() {
                       </div>
                       <div className="h-[120px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trendsData}>
+                          <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                             <defs>
                               <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
                                 <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
+                            <XAxis dataKey="date" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} tickMargin={10} />
                             <Tooltip cursor={false} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px', padding: '8px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
                             <Area type="monotone" dataKey="hours" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" activeDot={{r: 6, strokeWidth: 0}} />
                           </AreaChart>
@@ -754,9 +755,9 @@ export default function DashboardPage() {
                     <h3 className="font-bold text-foreground mb-6">Department Productivity (All Time Hours)</h3>
                     <div className="h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={deptProdData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                        <BarChart data={deptProdData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
                           <defs>
-                            <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id="colorBar" x1="0" y1="0" x2="1" y2="0">
                               <stop offset="0%" stopColor="var(--primary)" stopOpacity={1}/>
                               <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.6}/>
                             </linearGradient>
@@ -777,15 +778,15 @@ export default function DashboardPage() {
                   {/* Submission Status Pie Chart */}
                   <motion.div variants={itemVariants} className="bg-card border border-border rounded-xl shadow-sm p-6">
                     <h3 className="font-bold text-foreground mb-4">Submission Status (Today)</h3>
-                    <div className="h-[200px]">
+                    <div className="h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
+                        <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 20 }}>
                           <Pie
                             data={submissionData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={65}
-                            outerRadius={85}
+                            innerRadius={55}
+                            outerRadius={75}
                             paddingAngle={5}
                             dataKey="value"
                             stroke="none"
@@ -881,7 +882,7 @@ export default function DashboardPage() {
           )}
 
           {/* AUDIT LOGS TAB */}
-          {activeTab === 'Audit Logs (Today)' && (
+          {activeTab === 'Audit Logs' && (
             <motion.div key="audit" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="bg-card border border-border rounded-xl shadow-sm overflow-hidden h-[750px] flex flex-col">
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 {/* Desktop Table */}
