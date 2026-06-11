@@ -280,7 +280,7 @@ export default function DashboardPage() {
 
 
   // --- Exports ---
-      const handleExportExcel = () => {
+        const handleExportExcel = async () => {
     try {
       const validEntries = entries.filter(e => e);
       const ws = XLSX.utils.json_to_sheet(validEntries.map(e => ({
@@ -300,10 +300,25 @@ export default function DashboardPage() {
       
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const fileName = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.xlsx`;
+
+      if (navigator.share) {
+        try {
+          const file = new File([blob], fileName, { type: blob.type });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: fileName });
+            return;
+          }
+        } catch (shareError: any) {
+          if (shareError.name !== 'AbortError') console.error('Share failed', shareError);
+          return;
+        }
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.xlsx`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -314,7 +329,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     try {
       const validEntries = entries.filter(e => e);
       const headers = ['Date', 'Employee', 'Department', 'KRA', 'Hours', 'Status'];
@@ -322,11 +337,27 @@ export default function DashboardPage() {
         headers.join(','),
         ...validEntries.map(e => `"${e.work_date || ''}","${e.pgepl_users?.name || 'N/A'}","${e.department || ''}","${String(e.kra_category || '').replace(/_/g, ' ')}","${e.hours_spent || 0}","${e.task_status || ''}"`)
       ].join('\n');
+      
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const fileName = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.csv`;
+
+      if (navigator.share) {
+        try {
+          const file = new File([blob], fileName, { type: blob.type });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: fileName });
+            return;
+          }
+        } catch (shareError: any) {
+          if (shareError.name !== 'AbortError') console.error('Share failed', shareError);
+          return;
+        }
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `PGEPL_Export_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.csv`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -337,7 +368,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
       const validEntries = entries.filter(e => e);
       const doc = new jsPDF();
@@ -358,10 +389,25 @@ export default function DashboardPage() {
       });
       
       const blob = doc.output('blob');
+      const fileName = `PGEPL_Report_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.pdf`;
+
+      if (navigator.share) {
+        try {
+          const file = new File([blob], fileName, { type: blob.type });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: fileName });
+            return;
+          }
+        } catch (shareError: any) {
+          if (shareError.name !== 'AbortError') console.error('Share failed', shareError);
+          return;
+        }
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `PGEPL_Report_${String(reportRangeFilter || 'All').replace(/ /g, '_')}.pdf`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
