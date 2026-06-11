@@ -278,6 +278,79 @@ export default function DashboardPage() {
     { name: 'Pending', value: pendingCount, color: '#ef4444' } // red
   ].filter(d => d.value > 0);
 
+  // --- Compliance & Discipline Calculation ---
+  const getBusinessDays = (startDate: Date, endDate: Date) => {
+    let count = 0;
+    const curDate = new Date(startDate.getTime());
+    while (curDate <= endDate) {
+      const dayOfWeek = curDate.getDay();
+      if(dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+      curDate.setDate(curDate.getDate() + 1);
+    }
+    return count;
+  };
+
+  const complianceData = employees.map(emp => {
+    // Find all unique dates this employee has submitted
+    const empEntries = entries.filter(e => e.user_id === emp.id || e.pgepl_users?.name === emp.name);
+    const uniqueDays = new Set(empEntries.map(e => e.work_date));
+    const daysSubmitted = uniqueDays.size;
+
+    // Calculate total business days since their first entry (or account creation)
+    const firstEntryDate = empEntries.length > 0 
+      ? new Date(Math.min(...empEntries.map(e => new Date(e.work_date).getTime())))
+      : new Date(emp.created_at || Date.now()); // fallback
+    
+    // Total business days up to today
+    const totalBusinessDays = Math.max(1, getBusinessDays(firstEntryDate, new Date()));
+    
+    let coverage = Math.round((daysSubmitted / totalBusinessDays) * 100);
+    // Cap at 100% just in case they worked weekends
+    if (coverage > 100) coverage = 100;
+
+    let status = 'Concern';
+    let color = '#ef4444'; // red
+    let bgClass = 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30';
+    let textClass = 'text-red-700 dark:text-red-400';
+    if (coverage >= 60) { 
+      status = 'Regular'; 
+      color = '#10b981'; 
+      bgClass = 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30';
+      textClass = 'text-emerald-700 dark:text-emerald-400';
+    } else if (coverage >= 20) { 
+      status = 'Moderate'; 
+      color = '#f59e0b'; 
+      bgClass = 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30';
+      textClass = 'text-amber-700 dark:text-amber-400';
+    }
+
+    // Calculate last 14 days sparkline for this employee
+    const sparkline = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = subDays(new Date(), i);
+      const dStr = format(d, 'yyyy-MM-dd');
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const hasSubmitted = uniqueDays.has(dStr);
+      sparkline.push({ date: format(d, 'MMM dd'), submitted: hasSubmitted ? 1 : 0, isWeekend });
+    }
+
+    return {
+      ...emp,
+      daysSubmitted,
+      totalBusinessDays,
+      coverage,
+      status,
+      color,
+      bgClass,
+      textClass,
+      sparkline,
+      firstEntryDate: format(firstEntryDate, 'dd MMM yyyy')
+    };
+  }).sort((a, b) => b.coverage - a.coverage);
+
+  const starPlayers = complianceData.filter(c => c.status === 'Regular');
+  const moderatePlayers = complianceData.filter(c => c.status === 'Moderate');
+  const concernPlayers = complianceData.filter(c => c.status === 'Concern');
 
   // --- Exports ---
               const downloadFile = async (dataUrl: string, fileName: string, base64Data: string) => {
@@ -933,6 +1006,112 @@ export default function DashboardPage() {
                 </motion.div>
               </div>
             </div>
+
+            {/* --- NEXT-GEN COMPLIANCE DASHBOARD --- */}
+            <motion.div variants={itemVariants} className="mt-8 space-y-6 pt-8 border-t border-border">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
+                    <Activity className="text-primary" /> Employee Discipline & Consistency
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">Calculated against total business days since their first entry.</p>
+                </div>
+              </div>
+
+              {/* Compliance Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-card border border-emerald-500/30 p-5 rounded-xl shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 flex-shrink-0">
+                    <Award size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground">{starPlayers.length}</h3>
+                    <p className="text-sm text-emerald-600 font-medium">Star Players (60%+)</p>
+                  </div>
+                </div>
+                <div className="bg-card border border-amber-500/30 p-5 rounded-xl shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 flex-shrink-0">
+                    <Activity size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground">{moderatePlayers.length}</h3>
+                    <p className="text-sm text-amber-600 font-medium">Needs Push (20-59%)</p>
+                  </div>
+                </div>
+                <div className="bg-card border border-red-500/30 p-5 rounded-xl shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 flex-shrink-0">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground">{concernPlayers.length}</h3>
+                    <p className="text-sm text-red-600 font-medium">Critical Attention (&lt;20%)</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employee Health Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {complianceData.map((emp) => (
+                  <div key={emp.id} className={`p-5 rounded-xl border flex flex-col sm:flex-row gap-6 ${emp.bgClass} transition-all hover:shadow-md`}>
+                    
+                    {/* Circular Progress & Info */}
+                    <div className="flex items-center gap-5 flex-1">
+                      <div className="relative w-16 h-16 flex-shrink-0">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" className="text-foreground/10" />
+                          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke={emp.color} strokeWidth="3" strokeDasharray={`${emp.coverage}, 100`} className="drop-shadow-sm" />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className={`text-xs font-bold ${emp.textClass}`}>{emp.coverage}%</span>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-bold text-foreground text-lg leading-tight">{emp.name}</h3>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-0.5">{emp.department}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${emp.bgClass} ${emp.textClass} border border-current/20`}>
+                            {emp.status}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {emp.daysSubmitted}/{emp.totalBusinessDays} Days
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sparkline & Action */}
+                    <div className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-current/10 pt-4 sm:pt-0 sm:pl-6 w-full sm:w-auto">
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Last 14 Days</p>
+                        <div className="flex gap-1">
+                          {emp.sparkline.map((day, i) => (
+                            <div 
+                              key={i} 
+                              title={`${day.date}: ${day.isWeekend ? 'Weekend' : day.submitted ? 'Submitted' : 'Missed'}`}
+                              className={`w-2 h-6 rounded-sm ${day.isWeekend ? 'bg-secondary' : day.submitted ? 'bg-emerald-500' : 'bg-red-400 opacity-40'}`}
+                            ></div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {emp.status === 'Concern' && (
+                        <div className="mt-3 text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <AlertCircle size={12} /> High flight risk
+                        </div>
+                      )}
+                      {emp.status === 'Regular' && (
+                        <div className="mt-3 text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                          <CheckCircle size={12} /> Highly consistent
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
           </motion.div>
           )}
 

@@ -1,4 +1,7 @@
-package com.pgepl.worktracker;
+const fs = require('fs');
+
+const mainActivityFile = 'android/app/src/main/java/com/pgepl/worktracker/MainActivity.java';
+const mainActivityContent = `package com.pgepl.worktracker;
 
 import android.os.Bundle;
 import android.os.Environment;
@@ -62,4 +65,7 @@ public class MainActivity extends BridgeActivity {
             }
         }, "AndroidDownloader");
     }
-}
+}`;
+
+fs.writeFileSync(mainActivityFile, mainActivityContent, 'utf8');
+console.log("Updated MainActivity.java with MediaStore fix");
