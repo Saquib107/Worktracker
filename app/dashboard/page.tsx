@@ -1059,14 +1059,22 @@ export default function DashboardPage() {
 
               {/* SECTION 4: Analytics Trends */}
               <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                  <h3 className="font-bold text-foreground uppercase tracking-wider text-xs">Analytics Trends (14 Days)</h3>
-                  <div className="flex bg-secondary p-1 rounded-lg">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+                  <div>
+                    <h3 className="font-bold text-foreground uppercase tracking-wider text-xs">Analytics Trends (14 Days)</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {trendTab === 'Hours' && 'Total hours logged across all departments per day.'}
+                      {trendTab === 'Productivity' && 'Average hours logged per submitting employee per day.'}
+                      {trendTab === 'Consistency' && 'Percentage of the total workforce that submitted a tracker per day.'}
+                      {trendTab === 'Submissions' && 'Total count of employees who submitted a tracker per day.'}
+                    </p>
+                  </div>
+                  <div className="flex bg-secondary p-1 rounded-lg w-full overflow-x-auto custom-scrollbar lg:w-auto flex-shrink-0">
                     {['Hours', 'Productivity', 'Consistency', 'Submissions'].map(tab => (
                       <button 
                         key={tab}
                         onClick={() => setTrendTab(tab)}
-                        className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${trendTab === tab ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${trendTab === tab ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                       >
                         {tab}
                       </button>
@@ -1075,7 +1083,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.4}/>
@@ -1083,7 +1091,17 @@ export default function DashboardPage() {
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="date" tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} tickMargin={10} minTickGap={15} />
-                      <Tooltip cursor={false} contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px', padding: '8px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)'}} />
+                      <YAxis tick={{fill: 'var(--muted-foreground)', fontSize: 10}} axisLine={false} tickLine={false} width={60} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
+                      <Tooltip 
+                        cursor={{stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '3 3'}} 
+                        contentStyle={{backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px', padding: '8px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)'}} 
+                        formatter={(value: any) => {
+                          if (trendTab === 'Hours' || trendTab === 'Productivity') return [`${value} hrs`, trendTab];
+                          if (trendTab === 'Consistency') return [`${value}%`, trendTab];
+                          return [value, trendTab];
+                        }}
+                      />
                       <Area 
                         type="monotone" 
                         dataKey={trendTab.toLowerCase()} 
@@ -1091,7 +1109,7 @@ export default function DashboardPage() {
                         strokeWidth={3} 
                         fillOpacity={1} 
                         fill="url(#colorTrend)" 
-                        activeDot={{r: 6, strokeWidth: 0}} 
+                        activeDot={{r: 6, strokeWidth: 0, fill: 'var(--primary)', stroke: '#fff', strokeWidth: 2}} 
                       />
                     </AreaChart>
                   </ResponsiveContainer>
