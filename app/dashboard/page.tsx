@@ -280,23 +280,15 @@ export default function DashboardPage() {
 
 
   // --- Exports ---
-            const downloadFile = async (dataUrl: string, fileName: string, base64Data: string) => {
+              const downloadFile = async (dataUrl: string, fileName: string, base64Data: string) => {
     try {
-      if (typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform()) {
-        const { Filesystem, Directory } = require('@capacitor/filesystem');
-        
-        await Filesystem.writeFile({
-          path: fileName,
-          data: base64Data,
-          directory: Directory.Documents
-        });
-        
-        alert("File securely saved to your phone's Documents folder!");
+      if (typeof window !== 'undefined' && (window as any).AndroidDownloader) {
+        (window as any).AndroidDownloader.saveFile(base64Data, fileName);
         return;
       }
     } catch (e: any) {
-      console.error("Capacitor save failed:", e);
-      alert("Capacitor save failed: " + e.message);
+      console.error("Android native save failed:", e);
+      alert("Native save failed: " + e.message);
     }
 
     const a = document.createElement('a');
