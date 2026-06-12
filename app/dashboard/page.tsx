@@ -10,9 +10,6 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { registerLocalNotifications } from '@/lib/push';
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 
 const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
 const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
@@ -378,29 +375,16 @@ export default function DashboardPage() {
 
   // --- Exports ---
   const downloadFile = async (dataUrl: string, fileName: string, base64Data: string) => {
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const savedFile = await Filesystem.writeFile({
-          path: fileName,
-          data: base64Data,
-          directory: Directory.Cache
-        });
-
-        await Share.share({
-          title: `Download ${fileName}`,
-          text: `Here is your report: ${fileName}`,
-          url: savedFile.uri,
-          dialogTitle: 'Save or Share Report',
-        });
+    try {
+      if (typeof window !== 'undefined' && (window as any).AndroidDownloader) {
+        (window as any).AndroidDownloader.saveFile(base64Data, fileName);
         return;
-      } catch (err: any) {
-        console.error("Capacitor save/share failed", err);
-        alert("Failed to save or share on device: " + err.message);
-        return; // Fail gracefully
       }
+    } catch (e: any) {
+      console.error("Android native save failed:", e);
+      alert("Native save failed: " + e.message);
     }
 
-    // Web Fallback
     const a = document.createElement('a');
     a.href = dataUrl;
     a.download = fileName;
