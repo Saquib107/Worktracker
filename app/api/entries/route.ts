@@ -102,6 +102,8 @@ export async function GET(request: Request) {
         ? ['HR', 'HR & IR'] 
         : [decoded.department];
       query = query.in('department', allowedDepts);
+      // Exclude Ritesh and Rakesh S from the dashboard view for Dept Head
+      query = query.not('pgepl_users.name', 'in', '("Ritesh","Rakesh S")');
     }
 
     const { data, error } = await query;

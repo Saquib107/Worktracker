@@ -31,6 +31,8 @@ export async function GET(request: Request) {
         ? ['HR', 'HR & IR'] 
         : [decoded.department];
       userQuery = userQuery.in('department', allowedDepts);
+      // Exclude Ritesh and Rakesh S from the dashboard view for Dept Head
+      userQuery = userQuery.not('name', 'in', '("Ritesh","Rakesh S")');
     }
 
     const { data: users, count: employeeCount, error } = await userQuery;

@@ -549,10 +549,25 @@ export default function DashboardPage() {
       {/* TABS */}
       <div className="bg-card border-b border-border sticky top-[73px] z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex overflow-x-auto custom-scrollbar">
-          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs', 'Head HR'].map(tab => (
+          {['Overview', 'Reports', 'Analytics', 'Employees', 'Fill Form', 'Audit Logs', 'Head HR']
+            .filter(tab => {
+              if (state.user?.role === 'dept_head') {
+                return !['Audit Logs', 'Head HR'].includes(tab);
+              } else {
+                return tab !== 'Fill Form'; // Only dept_head gets the tab
+              }
+            })
+            .map(tab => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
+              onClick={() => { 
+                if (tab === 'Fill Form') {
+                  router.push('/submit');
+                } else {
+                  setActiveTab(tab); 
+                  setCurrentPage(1); 
+                }
+              }}
               className={`whitespace-nowrap px-6 py-4 font-bold text-sm border-b-2 transition-colors ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
             >
               {tab}
