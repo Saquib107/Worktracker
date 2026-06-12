@@ -5,7 +5,7 @@ import React, { createContext, useContext, useReducer, ReactNode, useEffect } fr
 export interface AuthUser {
   userId: string;
   name: string;
-  role: 'employee' | 'manager';
+  role: 'employee' | 'manager' | 'dept_head';
   department: string;
 }
 

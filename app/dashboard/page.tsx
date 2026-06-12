@@ -88,7 +88,7 @@ export default function DashboardPage() {
     if (!state.isLoading && !state.user) {
       router.push('/login');
     } else if (state.user) {
-      if (state.user.role !== 'manager') {
+      if (state.user.role !== 'manager' && state.user.role !== 'dept_head') {
         router.push('/submit');
       } else {
         fetchData();
