@@ -549,7 +549,7 @@ export default function DashboardPage() {
       {/* TABS */}
       <div className="bg-card border-b border-border sticky top-[73px] z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex overflow-x-auto custom-scrollbar">
-          {['Overview', 'Reports', 'Analytics', 'Employees', 'Fill Form', 'Audit Logs', 'Head HR']
+          {['Overview', 'Reports', 'Analytics', 'Employees', 'Audit Logs', 'Fill Form', 'Head HR']
             .filter(tab => {
               if (state.user?.role === 'dept_head') {
                 return tab !== 'Head HR';
