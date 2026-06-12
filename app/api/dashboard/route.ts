@@ -14,24 +14,25 @@ export async function GET(request: Request) {
     
     const token = authHeader.split(' ')[1];
     const decoded: any = verifyToken(token);
-    if (!decoded || decoded.role !== 'manager') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    
+    if (!decoded || (decoded.role !== 'manager' && decoded.role !== 'dept_head')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    // Fetch total active employees
-    const { count: employeeCount, error: err1 } = await supabase
-      .from('pgepl_users')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 'employee');
-      
-    if (err1) throw err1;
+    // Base query for employees
+    let userQuery = supabase.from('pgepl_users').select('id, name, department, role', { count: 'exact' });
+    
+    // Filter out Head HR
+    userQuery = userQuery.eq('role', 'employee');
 
-    // We can just rely on the GET /api/entries for all entries and process it on the client side,
-    // or we can also return users here. Let's return all users for the Employees tab.
-    const { data: users, error: err2 } = await supabase
-      .from('pgepl_users')
-      .select('id, name, department, role')
-      .eq('role', 'employee');
+    // If Department Head, filter strictly by their department
+    if (decoded.role === 'dept_head') {
+      userQuery = userQuery.eq('department', decoded.department);
+    }
 
-    if (err2) throw err2;
+    const { data: users, count: employeeCount, error } = await userQuery;
+
+    if (error) throw error;
 
     return NextResponse.json({ 
       employeeCount,

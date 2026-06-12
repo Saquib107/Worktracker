@@ -83,16 +83,25 @@ export async function GET(request: Request) {
     
     const token = authHeader.split(' ')[1];
     const decoded: any = verifyToken(token);
-    if (!decoded || decoded.role !== 'manager') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!decoded || (decoded.role !== 'manager' && decoded.role !== 'dept_head')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Fetch all entries with user details
-    const { data, error } = await supabase
+    let query = supabase
       .from('pgepl_entries')
       .select(`
         *,
-        pgepl_users ( name, department )
+        pgepl_users!inner ( name, department )
       `)
       .order('work_date', { ascending: false });
+
+    // If Department Head, filter by their department
+    if (decoded.role === 'dept_head') {
+      query = query.eq('department', decoded.department);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 

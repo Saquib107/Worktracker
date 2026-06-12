@@ -74,6 +74,25 @@ export default function TopHeader({ title }: { title: string }) {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Navigation for Managers/Dept Heads */}
+        {(state.user.role === 'manager' || state.user.role === 'dept_head') && (
+          title !== 'Daily Log Submission' ? (
+            <button 
+              onClick={() => router.push('/submit')}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Submit Tracker
+            </button>
+          ) : (
+            <button 
+              onClick={() => router.push('/dashboard')}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary text-foreground border border-border text-xs font-bold rounded-lg hover:bg-border transition-colors"
+            >
+              Back to Dashboard
+            </button>
+          )
+        )}
+
         {/* Theme Toggle */}
         <button 
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

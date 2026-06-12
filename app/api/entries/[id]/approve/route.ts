@@ -14,7 +14,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     
     const token = authHeader.split(' ')[1];
     const decoded: any = verifyToken(token);
-    if (!decoded || decoded.role !== 'manager') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!decoded || (decoded.role !== 'manager' && decoded.role !== 'dept_head')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const { status } = await request.json();
     const { id } = await params;

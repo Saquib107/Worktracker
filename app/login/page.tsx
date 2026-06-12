@@ -25,7 +25,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!state.isLoading && state.user) {
-      router.push(state.user.role === 'manager' ? '/dashboard' : '/submit');
+      router.push((state.user.role === 'manager' || state.user.role === 'dept_head') ? '/dashboard' : '/submit');
     }
   }, [state, router]);
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
 
       dispatch({ type: 'LOGIN', payload: { user: data.user, token: data.token } });
       
-      router.push(data.user.role === 'manager' ? '/dashboard' : '/submit');
+      router.push((data.user.role === 'manager' || data.user.role === 'dept_head') ? '/dashboard' : '/submit');
       
     } catch (err: any) {
       setError(err.message);

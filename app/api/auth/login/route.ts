@@ -33,11 +33,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
+    // Identify Department Heads without altering database schema constraints
+    const deptHeadEmails = ['ritesh@pgepl.com'];
+    let finalRole = user.role;
+    if (deptHeadEmails.includes(user.email.toLowerCase())) {
+      finalRole = 'dept_head';
+    }
+
     // Create JWT payload
     const payload = {
       userId: user.id,
       name: user.name,
-      role: user.role,
+      role: finalRole,
       department: user.department,
     };
 
