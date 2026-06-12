@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       // Since it's a joined table, we need to filter based on the nested relationship, 
       // but supabase JS SDK supports doing this via the foreign table name
       query = query.in('pgepl_users.department', allowedDepts);
+      query = query.not('pgepl_users.name', 'in', '("Ritesh","Rakesh S")');
     }
 
     const { data, error } = await query;

@@ -552,7 +552,7 @@ export default function DashboardPage() {
           {['Overview', 'Reports', 'Analytics', 'Employees', 'Fill Form', 'Audit Logs', 'Head HR']
             .filter(tab => {
               if (state.user?.role === 'dept_head') {
-                return !['Audit Logs', 'Head HR'].includes(tab);
+                return tab !== 'Head HR';
               } else {
                 return tab !== 'Fill Form'; // Only dept_head gets the tab
               }
