@@ -84,6 +84,13 @@ export default function DashboardPage() {
   const [editingKraId, setEditingKraId] = useState<string | null>(null);
   const [editKraName, setEditKraName] = useState('');
 
+  // Toast Notification
+  const [toastMessage, setToastMessage] = useState<{title: string, desc: string} | null>(null);
+  const showToast = (title: string, desc: string) => {
+    setToastMessage({ title, desc });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   useEffect(() => {
     if (!state.isLoading && !state.user) {
       router.push('/login');
@@ -430,6 +437,7 @@ export default function DashboardPage() {
       const base64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
       const dataUrl = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + base64;
       await downloadFile(dataUrl, fileName, base64);
+      showToast("Download Complete", `${fileName} has been saved to your device.`);
 
     } catch (error: any) {
       console.error('Excel Export Error:', error);
@@ -464,6 +472,7 @@ export default function DashboardPage() {
       const base64 = btoa(unescape(encodeURIComponent(csvContent)));
       const dataUrl = "data:text/csv;base64," + base64;
       await downloadFile(dataUrl, fileName, base64);
+      showToast("Download Complete", `${fileName} has been saved to your device.`);
 
     } catch (error: any) {
       console.error('CSV Export Error:', error);
@@ -509,6 +518,7 @@ export default function DashboardPage() {
       const dataUrl = doc.output('datauristring');
       const base64 = dataUrl.split(',')[1];
       await downloadFile(dataUrl, fileName, base64);
+      showToast("Download Complete", `${fileName} has been saved to your device.`);
 
     } catch (error: any) {
       console.error('PDF Export Error:', error);
@@ -543,8 +553,28 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 relative">
       <TopHeader title="Enterprise Terminal" />
+      
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 right-6 z-50 bg-green-500 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-green-400"
+          >
+            <div className="bg-white/20 p-1.5 rounded-full">
+              <Check size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">{toastMessage.title}</p>
+              <p className="text-xs text-green-50 opacity-90">{toastMessage.desc}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* TABS */}
       <div className="bg-card border-b border-border sticky top-[73px] z-30 shadow-sm">
