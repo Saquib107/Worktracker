@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/WorkTrackerContext';
 import { Department, KraCategory, TaskStatus } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Suspense } from 'react';
 import { format } from 'date-fns';
 import TopHeader from '@/components/TopHeader';
 import { Check, AlertCircle, Sparkles, Send, Loader2, Download } from 'lucide-react';
@@ -13,8 +14,10 @@ import html2canvas from 'html2canvas';
 import { savePendingReport } from '@/lib/db';
 import { registerLocalNotifications } from '@/lib/push';
 
-export default function SubmitPage() {
+function SubmitFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get('embedded') === 'true';
   const { state, dispatch } = useAuth();
   
   const [step, setStep] = useState(1);
@@ -277,10 +280,10 @@ export default function SubmitPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <TopHeader title="Daily Log Submission" />
+    <div className={isEmbedded ? "pb-10" : "min-h-screen bg-background pb-20"}>
+      {!isEmbedded && <TopHeader title="Daily Log Submission" />}
 
-      <main className="max-w-2xl mx-auto mt-8 px-4">
+      <main className={isEmbedded ? "w-full" : "max-w-3xl mx-auto mt-8 px-4 md:px-0"}>
         <div className="bg-card border border-border rounded-xl p-6 md:p-8 shadow-sm">
           
           {hasSubmitted === false && (
@@ -527,5 +530,13 @@ export default function SubmitPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function SubmitPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8" /></div>}>
+      <SubmitFormContent />
+    </Suspense>
   );
 }

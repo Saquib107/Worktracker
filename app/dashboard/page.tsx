@@ -560,14 +560,7 @@ export default function DashboardPage() {
             .map(tab => (
             <button
               key={tab}
-              onClick={() => { 
-                if (tab === 'Fill Form') {
-                  router.push('/submit');
-                } else {
-                  setActiveTab(tab); 
-                  setCurrentPage(1); 
-                }
-              }}
+              onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
               className={`whitespace-nowrap px-6 py-4 font-bold text-sm border-b-2 transition-colors ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
             >
               {tab}
@@ -1718,6 +1711,13 @@ export default function DashboardPage() {
                 </ul>
               </motion.div>
               </div>
+            </motion.div>
+          )}
+
+          {/* FILL FORM TAB */}
+          {activeTab === 'Fill Form' && (
+            <motion.div key="fill-form" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+              <iframe src="/submit?embedded=true" className="w-full min-h-[850px] border-none rounded-xl" title="Submit Form" />
             </motion.div>
           )}
 
