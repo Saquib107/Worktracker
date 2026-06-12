@@ -10,7 +10,7 @@ export type Department =
   | 'Intern - S/w'
   | 'Admin';
 
-export type Role = 'employee' | 'manager';
+export type Role = 'employee' | 'manager' | 'dept_head';
 
 export type KraCategory = 
   | 'Attendance' | 'Recruitment' | 'Payroll' | 'PF_and_ESI'
