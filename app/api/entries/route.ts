@@ -98,7 +98,10 @@ export async function GET(request: Request) {
 
     // If Department Head, filter by their department
     if (decoded.role === 'dept_head') {
-      query = query.eq('department', decoded.department);
+      const allowedDepts = (decoded.department === 'HR' || decoded.department === 'HR & IR') 
+        ? ['HR', 'HR & IR'] 
+        : [decoded.department];
+      query = query.in('department', allowedDepts);
     }
 
     const { data, error } = await query;

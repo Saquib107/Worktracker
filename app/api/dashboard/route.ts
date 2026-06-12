@@ -25,9 +25,12 @@ export async function GET(request: Request) {
     // Filter out Head HR
     userQuery = userQuery.eq('role', 'employee');
 
-    // If Department Head, filter strictly by their department
+    // If Department Head, filter strictly by their department (inclusive of HR variants)
     if (decoded.role === 'dept_head') {
-      userQuery = userQuery.eq('department', decoded.department);
+      const allowedDepts = (decoded.department === 'HR' || decoded.department === 'HR & IR') 
+        ? ['HR', 'HR & IR'] 
+        : [decoded.department];
+      userQuery = userQuery.in('department', allowedDepts);
     }
 
     const { data: users, count: employeeCount, error } = await userQuery;

@@ -29,7 +29,12 @@ export async function GET(request: Request) {
 
     // If Department Head, filter by their department
     if (decoded.role === 'dept_head') {
-      query = query.eq('pgepl_users.department', decoded.department);
+      const allowedDepts = (decoded.department === 'HR' || decoded.department === 'HR & IR') 
+        ? ['HR', 'HR & IR'] 
+        : [decoded.department];
+      // Since it's a joined table, we need to filter based on the nested relationship, 
+      // but supabase JS SDK supports doing this via the foreign table name
+      query = query.in('pgepl_users.department', allowedDepts);
     }
 
     const { data, error } = await query;
