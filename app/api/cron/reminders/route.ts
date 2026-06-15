@@ -14,7 +14,10 @@ export async function GET(request: Request) {
     if (url.searchParams.get('key') !== process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
+    // Do not run on Sundays (0 = Sunday)
+    if (new Date().getDay() === 0) {
+      return NextResponse.json({ message: 'No reminders sent on Sundays.' });
+    }
     // 1. Get all employees
     const { data: employees, error: empErr } = await supabase
       .from('pgepl_users')

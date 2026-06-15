@@ -309,7 +309,7 @@ export default function DashboardPage() {
     const curDate = new Date(startDate.getTime());
     while (curDate <= endDate) {
       const dayOfWeek = curDate.getDay();
-      if(dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+      if(dayOfWeek !== 0) count++; // Monday to Saturday
       curDate.setDate(curDate.getDate() + 1);
     }
     return count;
