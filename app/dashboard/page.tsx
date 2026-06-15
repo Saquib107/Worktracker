@@ -344,7 +344,7 @@ export default function DashboardPage() {
     let streak = 0;
     for(let i=0; i<30; i++) {
       const d = subDays(new Date(), i);
-      if(d.getDay() === 0 || d.getDay() === 6) continue; // skip weekends
+      if(d.getDay() === 0) continue; // skip only Sunday
       if(uniqueDays.has(format(d, 'yyyy-MM-dd'))) streak++;
       else break;
     }
@@ -352,7 +352,7 @@ export default function DashboardPage() {
     const sparkline = [];
     for (let i = 13; i >= 0; i--) {
       const d = subDays(new Date(), i);
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const isWeekend = d.getDay() === 0; // only Sunday is a weekend
       sparkline.push({ date: format(d, 'MMM dd'), submitted: uniqueDays.has(format(d, 'yyyy-MM-dd')) ? 1 : 0, isWeekend, dayName: format(d, 'E') });
     }
 
