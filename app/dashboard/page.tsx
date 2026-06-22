@@ -116,6 +116,12 @@ export default function DashboardPage() {
         fetch('/api/audit', { headers })
       ]);
       
+      if (entriesRes.status === 401 || dbRes.status === 401) {
+        dispatch({ type: 'LOGOUT' });
+        router.push('/login');
+        return;
+      }
+      
       if (entriesRes.ok) setEntries((await entriesRes.json()).entries || []);
       if (dbRes.ok) setEmployees((await dbRes.json()).users || []);
       if (krasRes.ok) setKras((await krasRes.json()).kras || []);
