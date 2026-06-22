@@ -179,7 +179,9 @@ export default function DashboardPage() {
 
   // Removed handleApproval function
   // --- Calculations for Widgets ---
-  const todayDateStr = format(new Date(), 'yyyy-MM-dd');
+  const rawTodayStr = format(new Date(), 'yyyy-MM-dd');
+  const mostRecentEntry = entries.length > 0 ? entries.reduce((latest, e) => (e.work_date > latest ? e.work_date : latest), '2000-01-01') : rawTodayStr;
+  const todayDateStr = entries.some(e => e.work_date === rawTodayStr) ? rawTodayStr : (mostRecentEntry !== '2000-01-01' ? mostRecentEntry : rawTodayStr);
   const todaysEntries = entries.filter(e => e.work_date === todayDateStr);
   const issuesToday = todaysEntries.filter(e => e.has_issue);
   const completionRate = Math.round((todaysEntries.length / (employees.length || 1)) * 100);
