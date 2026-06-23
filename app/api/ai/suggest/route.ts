@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verifyToken } from '@/lib/auth';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || 'MISSING_KEY',
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'MISSING_KEY');
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +19,7 @@ export async function POST(request: Request) {
 
     const { tasks, kra, status, issueContext } = await request.json();
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       // Fallback for local testing without key
       const suggestions = [
         `- Complete pending follow-ups for ${kra}.\n- Resolve issues reported: ${issueContext || 'None'}.`,
@@ -42,14 +40,10 @@ Suggest 3 distinct, realistic plans for tomorrow (each 2-3 bullet points) based 
 Return the variations strictly as a JSON array of strings, with no additional formatting, markdown, or preamble. 
 Example format: ["- Task A\\n- Task B", "- Plan C\\n- Plan D", "- Goal E\\n- Goal F"]`;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 400,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
 
-    // @ts-ignore
-    const responseText = response.content[0].text;
+    const responseText = result.response.text();
     
     let suggestions = [];
     try {
