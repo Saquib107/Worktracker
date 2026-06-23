@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verifyToken } from '@/lib/auth';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || 'MISSING_KEY',
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'MISSING_KEY');
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No data to summarize' }, { status: 400 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       // Generate a highly polished mock summary parsing the real entries
       const activeDepts = [...new Set(entriesData.map((e: any) => e.department))];
       const issues = entriesData.filter((e: any) => e.has_issue);
@@ -74,14 +72,10 @@ Instructions:
 5. Highlight any major issues or blockers that need attention. 
 Keep it highly polished, enterprise-grade, and concise. Return only the report text, no preamble.`;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 600,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
 
-    // @ts-ignore
-    const summary = response.content[0].text;
+    const summary = result.response.text();
 
     return NextResponse.json({ summary });
 
