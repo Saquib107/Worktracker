@@ -33,7 +33,7 @@ import * as XLSX from 'xlsx';
 import { format, subDays, isAfter, startOfDay } from 'date-fns';
 
 export default function DashboardPage() {
-  const { state } = useAuth();
+  const { state, dispatch } = useAuth();
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useState('Overview');
