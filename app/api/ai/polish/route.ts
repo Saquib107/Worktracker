@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verifyToken } from '@/lib/auth';
 
 // Ensure we only initialize if the key is present
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || 'MISSING_KEY',
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'MISSING_KEY');
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tasks text is too short' }, { status: 400 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       // Fallback for local testing without key
       const suggestions = [
         `Successfully executed and completed the following tasks: ${tasksText}. Ensured all requirements were met.`,
@@ -43,14 +41,10 @@ Example format: ["Option 1", "Option 2", "Option 3"]
 Raw Log:
 ${tasksText}`;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 400,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
 
-    // @ts-ignore
-    const responseText = response.content[0].text;
+    const responseText = result.response.text();
     
     let suggestions = [];
     try {
